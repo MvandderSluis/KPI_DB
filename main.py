@@ -11,7 +11,7 @@ import argparse
 
 
 class Main:
-    def __init__(self, server=None, database=None):
+    def __init__(self, server=None, database=None, token=None):
         # Initialize
         if server:
             self.server = server
@@ -21,12 +21,14 @@ class Main:
             self.database = database
         else:
             self.database = 'KPI DB'
+        if not token:
+            token = "KNOWBE4_TOKEN"
         self.connect()
         self.cursor = self.connection.cursor()
         self.cursor.fast_executemany = True
-        api_token = os.getenv("KNOWBE4_TOKEN1")
+        api_token = os.getenv(token)
         if not api_token:
-            self._printLogregel("[ERROR] API-token ontbreekt. Stel KNOWBE4_TOKEN in als omgevingsvariabele.")
+            self._printLogregel(f"[ERROR] API-token ontbreekt. Stel {token} in als omgevingsvariabele.")
             sys.exit()
         self.page_size = 500
         self.headers = {
@@ -67,7 +69,7 @@ class Main:
         insert_sql = "INSERT INTO dbo.Users (id, ehash, phish_prone_percentage, status) VALUES (?, ?, ?, ?)"
         api_url = "https://eu.api.knowbe4.com/v1/users"
         while True:
-            data = fetch_page(self.headers, api_url, page, self.page_size)
+            data = self.fetch_page(self.headers, api_url, page, self.page_size)
             # Bepaal items robuust
             if isinstance(data, list):
                 items = data
@@ -104,7 +106,7 @@ class Main:
         data = self.cursor.fetchall()
         for item in data:
             api_url = f"https://eu.api.knowbe4.com/v1/users/{item[0]}"
-            data = fetch_page(self.headers, api_url, 1, 1)
+            data = self.fetch_page(self.headers, api_url, 1, 1)
             row = flatten(data, table)
             update_sql = (f"UPDATE dbo.Users SET [current_risk_score] = {row["current_risk_score"]} WHERE "
                           f"[id]={row["id"]}")
@@ -128,7 +130,7 @@ class Main:
                       "VALUES (?, ?, ?, ?, ?, ?)")
         api_url = "https://eu.api.knowbe4.com/v1/phishing/security_tests"
         while True:
-            data = fetch_page(self.headers, api_url, page, self.page_size)
+            data = self.fetch_page(self.headers, api_url, page, self.page_size)
             # Bepaal items robuust
             if isinstance(data, list):
                 items = data
@@ -164,7 +166,7 @@ class Main:
                       "VALUES (?, ?, ?, ?)")
         api_url = "https://eu.api.knowbe4.com/v1/training/campaigns"
         while True:
-            data = fetch_page(self.headers, api_url, page, self.page_size)
+            data = self.fetch_page(self.headers, api_url, page, self.page_size)
             # Bepaal items robuust
             if isinstance(data, list):
                 items = data
@@ -213,7 +215,7 @@ class Main:
             api_url = f"https://eu.api.knowbe4.com/v1/phishing/security_tests/{pst_id[0]}/recipients"
             page = 1
             while True:
-                data = fetch_page(self.headers, api_url, page, self.page_size)
+                data = self.fetch_page(self.headers, api_url, page, self.page_size)
                 # Bepaal items robuust
                 if isinstance(data, list):
                     items = data
@@ -266,7 +268,7 @@ class Main:
             api_url = f"https://eu.api.knowbe4.com/v1/training/enrollments?campaign_id={campaign[0]}"
             page = 1
             while True:
-                data = fetch_page(self.headers, api_url, page, self.page_size)
+                data = self.fetch_page(self.headers, api_url, page, self.page_size)
                 # Bepaal items robuust
                 if isinstance(data, list):
                     items = data
@@ -434,5 +436,6 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Importeer data naar SQL Server.")
     parser.add_argument("--server", required=False, help="Naam van de SQL Server")
     parser.add_argument("--database", required=False, help="Naam van de database")
+    parser.add_argument("--token", required=False, help="Naam van het API_token")
     args = parser.parse_args()
-    Main(args.server, args.database)
+    Main(args.server, args.database, args.token)
