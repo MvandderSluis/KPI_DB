@@ -1,6 +1,8 @@
 import os, time, io, csv
 import json
 import datetime
+import sys
+
 import requests
 import pyodbc
 import hashlib
@@ -19,17 +21,18 @@ class Main:
             self.database = database
         else:
             self.database = 'KPI DB'
-        api_token = os.getenv("KNOWBE4_TOKEN")
+        self.connect()
+        self.cursor = self.connection.cursor()
+        self.cursor.fast_executemany = True
+        api_token = os.getenv("KNOWBE4_TOKEN1")
         if not api_token:
-            raise ValueError("API-token ontbreekt. Stel KNOWBE4_TOKEN in als omgevingsvariabele.")
+            self._printLogregel("[ERROR] API-token ontbreekt. Stel KNOWBE4_TOKEN in als omgevingsvariabele.")
+            sys.exit()
         self.page_size = 500
         self.headers = {
             "Authorization": f"Bearer {api_token}",
             "Accept": "application/json"
         }
-        self.connect()
-        self.cursor = self.connection.cursor()
-        self.cursor.fast_executemany = True
 
         # Empty tables
         self.emptyTables()
@@ -348,17 +351,18 @@ class Main:
         self.cursor.commit()
         return
 
-
-def fetch_page(headers, api_url, page, per_page):
-    resp = requests.get(api_url, headers=headers,
-                        params={"page": page, "per_page": per_page, "status": "active"},
-                        timeout=30, allow_redirects=False)
-    ct = (resp.headers.get("Content-Type") or "").lower()
-    if resp.status_code >= 400:
-        raise RuntimeError(f"HTTP {resp.status_code}: {resp.text[:400]}")
-    if "application/json" not in ct:
-        raise RuntimeError(f"Geen JSON (Content-Type={ct})  url={resp.url}\nBody:\n{resp.text[:400]}")
-    return resp.json()
+    def fetch_page(self, headers, api_url, page, per_page):
+        resp = requests.get(api_url, headers=headers,
+                            params={"page": page, "per_page": per_page, "status": "active"},
+                            timeout=30, allow_redirects=False)
+        ct = (resp.headers.get("Content-Type") or "").lower()
+        if resp.status_code >= 400:
+            self._printLogregel(f"HTTP {resp.status_code}: {resp.text[:200]}")
+            sys.exit()
+        if "application/json" not in ct:
+            self._printLogregel(f"Geen JSON (Content-Type={ct})  url={resp.url}\nBody:\n{resp.text[:200]}")
+            sys.exit()
+        return resp.json()
 
 
 def to_float_or_none(v):
