@@ -35,14 +35,19 @@ class Main:
         self.emptyTables()
         # Get users
         self.getUsers()
+        time.sleep(10)
         # Get Risico scores
         self.getRiskScore()
+        time.sleep(10)
         # Get phishing Campaigns
         self.getCampaigns()
+        time.sleep(10)
         # Get responses
         self.getResponses()
+        time.sleep(10)
         # Get Training campaigns
         self.getTrainingCampaigns()
+        time.sleep(10)
         # Get Trainings Campaigns followed
         self.getTrainingCampaignsFollowed()
         # History update
