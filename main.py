@@ -5,12 +5,23 @@ import requests
 import pyodbc
 import hashlib
 import math
+import argparse
 
 
 class Main:
-    def __init__(self):
+    def __init__(self, server=None, database=None):
         # Initialize
-        api_token = os.getenv("API_TOKEN")
+        if server:
+            self.server = server
+        else:
+            self.server = r'HI000090\SQLEXPRESS'
+        if database:
+            self.database = database
+        else:
+            self.database = 'KPI DB'
+        api_token = os.getenv("KNOWBE4_TOKEN")
+        if not api_token:
+            raise ValueError("API-token ontbreekt. Stel KNOWBE4_TOKEN in als omgevingsvariabele.")
         self.page_size = 500
         self.headers = {
             "Authorization": f"Bearer {api_token}",
@@ -294,11 +305,9 @@ class Main:
         return
 
     def connect(self):
-        server = r'HI000090\SQLEXPRESS'
-        database = 'KPI DB'
         connection_string = ("DRIVER={ODBC Driver 17 for SQL Server};"
-                             f"SERVER={server};"
-                             f"DATABASE={database};"
+                             f"SERVER={self.server};"
+                             f"DATABASE={self.database};"
                              "Trusted_Connection=yes;")
         self.connection = pyodbc.connect(connection_string)
         return
@@ -413,4 +422,8 @@ def flatten(item, table):
 
 
 if __name__ == '__main__':
-    Main()
+    parser = argparse.ArgumentParser(description="Importeer data naar SQL Server.")
+    parser.add_argument("--server", required=False, help="Naam van de SQL Server")
+    parser.add_argument("--database", required=False, help="Naam van de database")
+    args = parser.parse_args()
+    Main(args.server, args.database)
