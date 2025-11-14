@@ -189,7 +189,9 @@ AS
 SELECT P.pst_id
 	FROM [dbo].[Phishing_tests] AS P
 	JOIN [dbo].[Stam_Phishing_Campaigns] AS S ON S.Campaign_id=P.campaign_id
-	WHERE S.Actief=1;
+	WHERE S.Actief=1 
+	AND DATEADD(DAY,[duration],DATEADD(YEAR, 2, [started_at])) <= CONVERT(DATETIME,CAST(YEAR(SYSDATETIME()) AS VARCHAR(4)) + '-' + CAST(MONTH(SYSDATETIME()) AS VARCHAR(2)) + '-01', 102) - 1;
+	-- ALs datum_actief + duration (dagen) meer dan twee jaar in het verleden ligt moet deze niet worden meegenomen
 GO
 
 CREATE VIEW [dbo].[Vw_Active_Training_Campaigns]

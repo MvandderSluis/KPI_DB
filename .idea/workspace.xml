@@ -4,16 +4,12 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="83988ac0-4b1e-42c4-b1c1-b258198167a7" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/.idea/KPI.iml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/inspectionProfiles/Project_Default.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/inspectionProfiles/profiles_settings.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/modules.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/import data.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/main.py" afterDir="false" />
+    <list default="true" id="83988ac0-4b1e-42c4-b1c1-b258198167a7" name="Changes" comment="Remove raise errors">
+      <change afterPath="$PROJECT_DIR$/KPI DWH.sql" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/staging knowbe4.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Database.sql" beforeDir="false" afterPath="$PROJECT_DIR$/Database.sql" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Hitas query.sql" beforeDir="false" afterPath="$PROJECT_DIR$/Hitas query.sql" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -39,23 +35,24 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;Python tests.Doctests in adapters.executor&quot;: &quot;Debug&quot;,
-    &quot;Python tests.Doctests in models.executor&quot;: &quot;Run&quot;,
-    &quot;Python.import data.executor&quot;: &quot;Debug&quot;,
-    &quot;Python.main.executor&quot;: &quot;Debug&quot;,
-    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;master&quot;,
-    &quot;last_opened_file_path&quot;: &quot;D:/Ontwikkel/Taxonomy&quot;
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "Python tests.Doctests in adapters.executor": "Debug",
+    "Python tests.Doctests in models.executor": "Run",
+    "Python.import data.executor": "Debug",
+    "Python.main.executor": "Debug",
+    "Python.staging knowbe4.executor": "Run",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "git-widget-placeholder": "master",
+    "last_opened_file_path": "D:/Ontwikkel/HIS"
   }
-}</component>
+}]]></component>
   <component name="RecentsManager">
     <key name="MoveFile.RECENT_KEYS">
       <recent name="D:\Ontwikkel\KPI" />
     </key>
   </component>
-  <component name="RunManager">
+  <component name="RunManager" selected="Python.staging knowbe4">
     <configuration name="main" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="KPI" />
       <option name="ENV_FILES" value="" />
@@ -78,8 +75,31 @@
       <option name="INPUT_FILE" value="" />
       <method v="2" />
     </configuration>
+    <configuration name="staging knowbe4" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="KPI" />
+      <option name="ENV_FILES" value="" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/staging knowbe4.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
     <recent_temporary>
       <list>
+        <item itemvalue="Python.staging knowbe4" />
         <item itemvalue="Python.main" />
       </list>
     </recent_temporary>
@@ -100,18 +120,57 @@
       <option name="presentableId" value="Default" />
       <updated>1762270199489</updated>
     </task>
+    <task id="LOCAL-00001" summary="Inititial version">
+      <option name="closed" value="true" />
+      <created>1762865175342</created>
+      <option name="number" value="00001" />
+      <option name="presentableId" value="LOCAL-00001" />
+      <option name="project" value="LOCAL" />
+      <updated>1762865175342</updated>
+    </task>
+    <task id="LOCAL-00002" summary="Added command parameters">
+      <option name="closed" value="true" />
+      <created>1762952541909</created>
+      <option name="number" value="00002" />
+      <option name="presentableId" value="LOCAL-00002" />
+      <option name="project" value="LOCAL" />
+      <updated>1762952541909</updated>
+    </task>
+    <task id="LOCAL-00003" summary="More sleeps to prevent API overflow">
+      <option name="closed" value="true" />
+      <created>1762953503346</created>
+      <option name="number" value="00003" />
+      <option name="presentableId" value="LOCAL-00003" />
+      <option name="project" value="LOCAL" />
+      <updated>1762953503346</updated>
+    </task>
+    <task id="LOCAL-00004" summary="Remove raise errors">
+      <option name="closed" value="true" />
+      <created>1762959389629</created>
+      <option name="number" value="00004" />
+      <option name="presentableId" value="LOCAL-00004" />
+      <option name="project" value="LOCAL" />
+      <updated>1762959389629</updated>
+    </task>
+    <task id="LOCAL-00005" summary="Remove raise errors">
+      <option name="closed" value="true" />
+      <created>1762960551155</created>
+      <option name="number" value="00005" />
+      <option name="presentableId" value="LOCAL-00005" />
+      <option name="project" value="LOCAL" />
+      <updated>1762960551155</updated>
+    </task>
+    <option name="localTasksCounter" value="6" />
     <servers />
   </component>
+  <component name="VcsManagerConfiguration">
+    <MESSAGE value="Inititial version" />
+    <MESSAGE value="Added command parameters" />
+    <MESSAGE value="More sleeps to prevent API overflow" />
+    <MESSAGE value="Remove raise errors" />
+    <option name="LAST_COMMIT_MESSAGE" value="Remove raise errors" />
+  </component>
   <component name="XDebuggerManager">
-    <breakpoint-manager>
-      <breakpoints>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/main.py</url>
-          <line>72</line>
-          <option name="timeStamp" value="5" />
-        </line-breakpoint>
-      </breakpoints>
-    </breakpoint-manager>
     <watches-manager>
       <configuration name="PythonConfigurationType">
         <watch expression="resp" />
