@@ -4,12 +4,10 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="83988ac0-4b1e-42c4-b1c1-b258198167a7" name="Changes" comment="Remove raise errors">
-      <change afterPath="$PROJECT_DIR$/KPI DWH.sql" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/staging knowbe4.py" afterDir="false" />
+    <list default="true" id="83988ac0-4b1e-42c4-b1c1-b258198167a7" name="Changes" comment="Staging software aswell as database setup">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Database.sql" beforeDir="false" afterPath="$PROJECT_DIR$/Database.sql" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Hitas query.sql" beforeDir="false" afterPath="$PROJECT_DIR$/Hitas query.sql" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/KPI DWH.sql" beforeDir="false" afterPath="$PROJECT_DIR$/KPI DWH.sql" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/staging knowbe4.py" beforeDir="false" afterPath="$PROJECT_DIR$/staging knowbe4.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -160,7 +158,15 @@
       <option name="project" value="LOCAL" />
       <updated>1762960551155</updated>
     </task>
-    <option name="localTasksCounter" value="6" />
+    <task id="LOCAL-00006" summary="Staging software aswell as database setup">
+      <option name="closed" value="true" />
+      <created>1763151936739</created>
+      <option name="number" value="00006" />
+      <option name="presentableId" value="LOCAL-00006" />
+      <option name="project" value="LOCAL" />
+      <updated>1763151936739</updated>
+    </task>
+    <option name="localTasksCounter" value="7" />
     <servers />
   </component>
   <component name="VcsManagerConfiguration">
@@ -168,7 +174,8 @@
     <MESSAGE value="Added command parameters" />
     <MESSAGE value="More sleeps to prevent API overflow" />
     <MESSAGE value="Remove raise errors" />
-    <option name="LAST_COMMIT_MESSAGE" value="Remove raise errors" />
+    <MESSAGE value="Staging software aswell as database setup" />
+    <option name="LAST_COMMIT_MESSAGE" value="Staging software aswell as database setup" />
   </component>
   <component name="XDebuggerManager">
     <watches-manager>

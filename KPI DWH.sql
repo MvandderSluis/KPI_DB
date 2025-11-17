@@ -138,6 +138,12 @@ BEGIN
 		DROP TABLE [STG].[Stg_kb4_Training_Enrollment];
 	IF  EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[STG].[Stg_hitas_Users]') AND type in (N'U'))
 		DROP TABLE [STG].[Stg_hitas_Users];
+	IF  EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[STG].[stg_md_Units]') AND type in (N'U'))
+		DROP TABLE [STG].[stg_md_Units];
+	IF  EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[STG].[stg_md_Training]') AND type in (N'U'))
+		DROP TABLE [STG].stg_md_Training;
+	IF  EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[STG].[stg_md_Phishing]') AND type in (N'U'))
+		DROP TABLE [STG].stg_md_Phishing;	
 	-- Target
 	IF  EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[DWH].[dim_user]') AND type in (N'U'))
 		DROP TABLE [DWH].[dim_user];
@@ -168,6 +174,35 @@ BEGIN
 		DROP TABLE [MST].[MST_Targets];
 	IF  EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[MST].[Logdata]') AND type in (N'U'))
 		DROP TABLE [MST].[LogData];
+	IF  EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[MST].[Source_status]') AND type in (N'U'))
+		DROP TABLE [MST].[Source_status];
+	-- Procedures
+	IF  EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[STG].[usp_load_md_Units]') AND type in (N'P'))
+		DROP PROCEDURE STG.usp_load_md_Units
+	IF  EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[STG].[usp_load_md_Training]') AND type in (N'P'))
+		DROP PROCEDURE STG.usp_load_md_Training
+	IF  EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[STG].[usp_load_md_Phishing]') AND type in (N'P'))
+		DROP PROCEDURE STG.usp_load_md_Phishing
+	IF  EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[DWH].[usp_load_dim_user_from_stg]') AND type in (N'P'))
+		DROP PROCEDURE DWH.usp_load_dim_user_from_stg
+	IF  EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[DWH].[usp_load_dim_unit_from_stg]') AND type in (N'P'))
+		DROP PROCEDURE DWH.usp_load_dim_unit_from_stg
+	IF  EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[DWH].[usp_load_dim_campaign_from_stg]') AND type in (N'P'))
+		DROP PROCEDURE DWH.usp_load_dim_campaign_from_stg
+	IF  EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[DWH].[usp_load_dim_template_from_stg]') AND type in (N'P'))
+		DROP PROCEDURE DWH.usp_load_dim_template_from_stg
+	IF  EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[DWH].[usp_init_dim_date]') AND type in (N'P'))
+		DROP PROCEDURE DWH.usp_init_dim_date
+	IF  EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[DWH].[usp_load_bridge_user_unit_from_stg]') AND type in (N'P'))
+		DROP PROCEDURE DWH.usp_load_bridge_user_unit_from_stg
+	IF  EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[DWH].[usp_load_fact_pst_recipient_result]') AND type in (N'P'))
+		DROP PROCEDURE DWH.usp_load_fact_pst_recipient_result
+	IF  EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[DWH].[usp_load_fact_training_enrollment]') AND type in (N'P'))
+		DROP PROCEDURE DWH.usp_load_fact_training_enrollment
+	IF  EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[DWH].[usp_load_fact_user_security_snapshot]') AND type in (N'P'))
+		DROP PROCEDURE DWH.usp_load_fact_user_security_snapshot
+	IF  EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[DWH].[usp_run_master_etl]') AND type in (N'P'))
+		DROP PROCEDURE DWH.usp_run_master_etl
 	-- SCHEMA's
 	IF EXISTS (SELECT * FROM [KPI database].sys.schemas WHERE name = 'STG')
 		DROP SCHEMA STG;
@@ -179,6 +214,7 @@ END
 GO
 ----------------- STAGING
 -- Staging layer tables
+
 CREATE SCHEMA STG;
 GO
 
@@ -220,6 +256,7 @@ BEGIN
 	CREATE TABLE [STG].[Stg_kb4_Pst_Recipient] (
 		  [pst_id]               BIGINT				NOT NULL,
 		  [user_id]              BIGINT				NOT NULL,
+		  [template]			 VARCHAR(255)		NULL,
 		  [delivered_at]		 DATETIME2			NULL,
 		  [opened_at]			 DATETIME2			NULL,
 		  [clicked_at]			 DATETIME2			NULL,
@@ -265,6 +302,37 @@ BEGIN
 			[hash_row]          VARBINARY(32)			NULL,
 			 CONSTRAINT PK_stg_Hitas_users PRIMARY KEY (eHash)
 		);
+
+	-- 8) Masters -- Unit
+	
+	CREATE TABLE STG.stg_md_Units(
+		Unit_code		VARCHAR(50)		NOT NULL,
+		Unit_name		VARCHAR(255)	NOT NULL,
+		[load_ts]       DATETIME2		NOT NULL	DEFAULT SYSDATETIME(),
+		hash_row		VARBINARY(32)	NULL,
+		CONSTRAINT PK_stg_md_Units PRIMARY KEY (Unit_code)
+	);
+
+	-- 9) Masters -- Training Campaign
+	CREATE TABLE STG.stg_md_Training(
+		[Name]			VARCHAR(50)		NOT NULL,
+		Active			BIT				NOT NULL,
+		[Type]			VARCHAR(1)		NULL,
+		[load_ts]       DATETIME2		NOT NULL	DEFAULT SYSDATETIME(),
+		hash_row		VARBINARY(32)	NULL,
+		CONSTRAINT PK_stg_md_Training PRIMARY KEY ([Name])
+	);
+
+	-- 10) Masters -- Phishing Campaign
+	CREATE TABLE STG.stg_md_Phishing(
+		Campaign_id		BIGINT			NOT NULL,
+		[Name]			VARCHAR(50)		NULL,
+		[Active]		BIT				NOT NULL,	
+		[load_ts]       DATETIME2		NOT NULL	DEFAULT SYSDATETIME(),
+		hash_row		VARBINARY(32)	NULL,
+		CONSTRAINT PK_stg_md_Phish PRIMARY KEY (Campaign_id)
+	);
+
 END
 GO
 
@@ -278,7 +346,7 @@ BEGIN
 	CREATE TABLE DWH.dim_user (
 	  [user_key]             INT IDENTITY(1,1)	NOT NULL PRIMARY KEY,
 	  [user_id]              BIGINT				NOT NULL, -- NK
-	  [eHash]                VARCHAR(32)		NULL,
+	  [eHash]                VARBINARY(32)		NULL,
 	  [effective_from]		 DATETIME2			NOT NULL,
 	  [effective_to]		 DATETIME2			NULL,
 	  [is_current]           BIT				NOT NULL,
@@ -297,6 +365,10 @@ BEGIN
 	  [is_current]           BIT				NOT NULL,
 	  CONSTRAINT UQ_dim_campaign UNIQUE (campaign_id, campaign_type, effective_from)
 	);
+	ALTER TABLE DWH.dim_campaign
+		ADD CONSTRAINT CK_dim_campaign_type
+		CHECK (campaign_type IN ('training','phishing','policy'));
+
 	CREATE TABLE DWH.dim_template (
       [template_key]         INT IDENTITY(1,1)	NOT NULL	PRIMARY KEY,
 	  [template_name]        VARCHAR(255)		NOT NULL,
@@ -314,7 +386,9 @@ BEGIN
 	  [week]                 TINYINT			NULL,
 	  [quarter]              TINYINT			NULL,
 	  [is_weekend]           BIT				NULL
-);
+	);
+	ALTER TABLE DWH.dim_date
+		ADD CONSTRAINT UQ_dim_date UNIQUE ([date]);
 	CREATE TABLE DWH.dim_unit (
 	  [unit_key]       INT			NOT NULL	IDENTITY(1,1)	PRIMARY KEY,
 	  [unit_code]      VARCHAR(50)  NOT NULL,   -- NK
@@ -324,6 +398,9 @@ BEGIN
 	  [is_current]     BIT          NOT NULL,
 	CONSTRAINT UQ_dim_unit UNIQUE (unit_code, effective_from)
 	);
+	ALTER TABLE DWH.dim_campaign
+		ADD CONSTRAINT FK_dim_campaign_startdate
+		FOREIGN KEY (start_date_key) REFERENCES DWH.dim_date(date_key);
 END
 GO
 
@@ -351,6 +428,10 @@ BEGIN
 	  CONSTRAINT FK_pst_template FOREIGN KEY (template_key) REFERENCES DWH.dim_template(template_key),
 	  CONSTRAINT FK_pst_date     FOREIGN KEY (started_date_key) REFERENCES DWH.dim_date(date_key)
 	);
+	CREATE INDEX IX_fact_pst_user      ON DWH.fact_pst_recipient_result(user_key);
+	CREATE INDEX IX_fact_pst_campaign  ON DWH.fact_pst_recipient_result(campaign_key);
+	CREATE INDEX IX_fact_pst_template  ON DWH.fact_pst_recipient_result(template_key);
+	CREATE INDEX IX_fact_pst_date      ON DWH.fact_pst_recipient_result(started_date_key);
 	CREATE TABLE DWH.fact_training_enrollment (
 	  [enrollment_key]       BIGINT			NOT NULL	IDENTITY(1,1)	PRIMARY KEY,
 	  [user_key]             INT			NOT NULL,
@@ -365,6 +446,10 @@ BEGIN
 	  CONSTRAINT FK_te_enrdate  FOREIGN KEY (enrollment_date_key) REFERENCES DWH.dim_date(date_key),
 	  CONSTRAINT FK_te_compdate FOREIGN KEY (completion_date_key) REFERENCES DWH.dim_date(date_key)
 	);
+	CREATE INDEX IX_fact_te_user       ON DWH.fact_training_enrollment(user_key);
+	CREATE INDEX IX_fact_te_campaign   ON DWH.fact_training_enrollment(campaign_key);
+	CREATE INDEX IX_fact_te_enrdate    ON DWH.fact_training_enrollment(enrollment_date_key);
+	CREATE INDEX IX_fact_te_compdate   ON DWH.fact_training_enrollment(completion_date_key);
 	CREATE TABLE DWH.fact_user_security_snapshot (
 	  [snapshot_key]         BIGINT			NOT NULL	IDENTITY(1,1)	PRIMARY KEY,
 	  [user_key]             INT			NOT NULL,
@@ -376,17 +461,22 @@ BEGIN
 	  CONSTRAINT FK_snap_user FOREIGN KEY (user_key) REFERENCES DWH.dim_user(user_key),
 	  CONSTRAINT FK_snap_date FOREIGN KEY (snapshot_date_key) REFERENCES DWH.dim_date(date_key)
 	);
+	CREATE INDEX IX_fact_snap_user     ON DWH.fact_user_security_snapshot(user_key);
+	CREATE INDEX IX_fact_snap_date     ON DWH.fact_user_security_snapshot(snapshot_date_key);
 	CREATE TABLE DWH.bridge_user_unit (
 	  [user_key]			INT				NOT NULL,
 	  [unit_key]			INT				NOT NULL,
 	  [start_date_key]		INT				NOT NULL,	-- FK dim_date
 	  [end_date_key]		INT				NULL,		-- FK dim_date (NULL = lopend)
-	  [is_current]			INT				NOT NULL,
+	  [is_current]			BIT				NOT NULL,
 	  [allocation_wt]		DECIMAL(9,4)	NULL,		-- optioneel (default 1)
 	  CONSTRAINT PK_bridge_user_unit PRIMARY KEY (user_key, unit_key, start_date_key),
 	  CONSTRAINT FK_buu_user FOREIGN KEY (user_key) REFERENCES DWH.dim_user(user_key),
 	  CONSTRAINT FK_buu_unit FOREIGN KEY (unit_key) REFERENCES DWH.dim_unit(unit_key)
 	);
+	CREATE INDEX IX_buu_user           ON DWH.bridge_user_unit(user_key);
+	CREATE INDEX IX_buu_unit           ON DWH.bridge_user_unit(unit_key);
+	CREATE INDEX IX_buu_dates          ON DWH.bridge_user_unit(start_date_key, end_date_key);
 END
 GO
 
@@ -398,22 +488,22 @@ BEGIN
 	-- Units
 	CREATE TABLE [MST].[MST_Units](
 		[Unit]				VARCHAR(50)			NOT NULL,
-		[Unit naam]			VARCHAR(50)			NULL,
+		[Unit Name]			VARCHAR(50)			NULL,
 	 CONSTRAINT [PK_MST_Units] PRIMARY KEY (Unit)
 	 );
 	-- Phishing campaigns
 	CREATE TABLE [MST].[MST_Phishing_Campaigns](
 		[Campaign_id]		BIGINT				NOT NULL,
-		[Naam]				VARCHAR(50)			NULL,
-		[Actief]			BIT NOT NULL,
+		[Name]				VARCHAR(50)			NULL,
+		[Active]			BIT NOT NULL,
 		CONSTRAINT [PK_Stam_Phishing_Campaigns] PRIMARY KEY  ([Campaign_id]) 
 	);
 	-- Training campaigns
 	CREATE TABLE [MST].[MST_Training_Campaigns](
-		[Naam]				VARCHAR(50)			NOT NULL,
-		[Actief]			BIT					NOT NULL,
+		[Name]				VARCHAR(50)			NOT NULL,
+		[Active]			BIT					NOT NULL,
 		[Type]				VARCHAR(1)			NULL,
-		CONSTRAINT [PK_Stam_Training_Campaigns] PRIMARY KEY (Naam)
+		CONSTRAINT [PK_Stam_Training_Campaigns] PRIMARY KEY ([Name])
 	);
 	-- Targets
 	CREATE TABLE [MST].[MST_Targets](
@@ -425,42 +515,58 @@ BEGIN
 		CONSTRAINT [PK_MST_Targets] PRIMARY KEY CLUSTERED (KPI)
 		);
 	CREATE TABLE [MST].[Logdata](
-		[Timestamp] [DATETIME] NOT NULL,
-		[Log regel] [nVARCHAR](MAX) NULL,
+		[Timestamp]		DATETIME2		NOT NULL,
+		[Source]		VARCHAR(10)		NULL,
+		[Severity]		VARCHAR(4)		NULL,
+		[Log regel]		nVARCHAR(MAX)	NULL,
 		CONSTRAINT [PK_Logdata] PRIMARY KEY CLUSTERED ([Timestamp])
+	);
+	CREATE TABLE [MST].[Source_status](
+		[Source]				VARCHAR(10)		NOT NULL,
+		[Run_date]				DATE			NULL,
+		[Max_Fetches]			INT				NULL,
+		[Fetched_today]			INT				NULL,
+		[Warning_Percentage]	INT				NULL,
+		[Error_Percentage]		INT				NULL,
+		[Finished]				BIT				NOT NULL,
+		CONSTRAINT [PK_MST_Source_status] PRIMARY KEY CLUSTERED (Source)
 	);
 END
 GO
 
 -- Filling master tables
 BEGIN
-	INSERT INTO [MST].[MST_Units](Unit, [Unit naam]) VAlues('02.Business', 'Business')
-	INSERT INTO [MST].[MST_Units](Unit, [Unit naam]) VAlues('01.BI', 'Business Intelligence')
-	INSERT INTO [MST].[MST_Units](Unit, [Unit naam]) VAlues('03.Change', 'Change, Governance en Privacy')
-	INSERT INTO [MST].[MST_Units](Unit, [Unit naam]) VAlues('04.DataEng', 'Data Engineering')
-	INSERT INTO [MST].[MST_Units](Unit, [Unit naam]) VAlues('00.FF', 'Future Facts')
-	INSERT INTO [MST].[MST_Units](Unit, [Unit naam]) VAlues('Groep', 'HI Groep')
-	INSERT INTO [MST].[MST_Units](Unit, [Unit naam]) VAlues('08.HIBrid', 'Hibrid')
-	INSERT INTO [MST].[MST_Units](Unit, [Unit naam]) VAlues('06.INT', 'Intern')
-	INSERT INTO [MST].[MST_Units](Unit, [Unit naam]) VAlues('05.PlatEng', 'Platform Engineering')
+	INSERT INTO [MST].[MST_Units](Unit, [Unit name]) VALUES('02.Business', 'Business')
+	INSERT INTO [MST].[MST_Units](Unit, [Unit name]) VALUES('01.BI', 'Business Intelligence')
+	INSERT INTO [MST].[MST_Units](Unit, [Unit name]) VALUES('03.Change', 'Change, Governance en Privacy')
+	INSERT INTO [MST].[MST_Units](Unit, [Unit name]) VALUES('04.DataEng', 'Data Engineering')
+	INSERT INTO [MST].[MST_Units](Unit, [Unit name]) VALUES('00.FF', 'Future Facts')
+	INSERT INTO [MST].[MST_Units](Unit, [Unit name]) VALUES('Groep', 'HI Groep')
+	INSERT INTO [MST].[MST_Units](Unit, [Unit name]) VALUES('08.HIBrid', 'Hibrid')
+	INSERT INTO [MST].[MST_Units](Unit, [Unit name]) VALUES('06.INT', 'Intern')
+	INSERT INTO [MST].[MST_Units](Unit, [Unit name]) VALUES('05.PlatEng', 'Platform Engineering')
 
-	INSERT INTO [MST].[MST_Phishing_Campaigns](Campaign_id, Naam, Actief) VALUES(243817, 'Baseline test', 0)
-	INSERT INTO [MST].[MST_Phishing_Campaigns](Campaign_id, Naam, Actief) VALUES(245938, 'Baseline', 0)
-	INSERT INTO [MST].[MST_Phishing_Campaigns](Campaign_id, Naam, Actief) VALUES(295408, 'Standaard campagne mei-oktober 2022', 0)
-	INSERT INTO [MST].[MST_Phishing_Campaigns](Campaign_id, Naam, Actief) VALUES(378282, 'Campagne November 22 - April 23', 0)
-	INSERT INTO [MST].[MST_Phishing_Campaigns](Campaign_id, Naam, Actief) VALUES(459178, 'Mei 2023 - Okt 2023', 0)
-	INSERT INTO [MST].[MST_Phishing_Campaigns](Campaign_id, Naam, Actief) VALUES(555830, 'Campagne nieuw', 1)
-	INSERT INTO [MST].[MST_Phishing_Campaigns](Campaign_id, Naam, Actief) VALUES(764860, 'Whitelist test', 0)
-	INSERT INTO [MST].[MST_Phishing_Campaigns](Campaign_id, Naam, Actief) VALUES(765406, 'Whitelist test Clone', 0)
-	INSERT INTO [MST].[MST_Phishing_Campaigns](Campaign_id, Naam, Actief) VALUES(905307, 'Callback Phishing', 1)
+	INSERT INTO [MST].[MST_Phishing_Campaigns](Campaign_id, [Name], Active) VALUES(243817, 'Baseline test', 0)
+	INSERT INTO [MST].[MST_Phishing_Campaigns](Campaign_id, [Name], Active) VALUES(245938, 'Baseline', 0)
+	INSERT INTO [MST].[MST_Phishing_Campaigns](Campaign_id, [Name], Active) VALUES(295408, 'Standaard campagne mei-oktober 2022', 0)
+	INSERT INTO [MST].[MST_Phishing_Campaigns](Campaign_id, [Name], Active) VALUES(378282, 'Campagne November 22 - April 23', 0)
+	INSERT INTO [MST].[MST_Phishing_Campaigns](Campaign_id, [Name], Active) VALUES(459178, 'Mei 2023 - Okt 2023', 0)
+	INSERT INTO [MST].[MST_Phishing_Campaigns](Campaign_id, [Name], Active) VALUES(555830, 'Campagne nieuw', 1)
+	INSERT INTO [MST].[MST_Phishing_Campaigns](Campaign_id, [Name], Active) VALUES(764860, 'Whitelist test', 0)
+	INSERT INTO [MST].[MST_Phishing_Campaigns](Campaign_id, [Name], Active) VALUES(765406, 'Whitelist test Clone', 0)
+	INSERT INTO [MST].[MST_Phishing_Campaigns](Campaign_id, [Name], Active) VALUES(905307, 'Callback Phishing', 1)
 
-	INSERT INTO [MST].[MST_Training_Campaigns](Naam, Actief, [type]) VALUES('The Inside Man', 1, 'T')
-	INSERT INTO [MST].[MST_Training_Campaigns](Naam, Actief, [type]) VALUES('Beleid', 1, 'P')
+	INSERT INTO [MST].[MST_Training_Campaigns]([Name], Active, [type]) VALUES('The Inside Man', 1, 'T')
+	INSERT INTO [MST].[MST_Training_Campaigns]([Name], Active, [type]) VALUES('Beleid', 1, 'P')
 
 	INSERT INTO [MST].[MST_Targets](KPI, [Target], [Active_From]) VALUES('Risico score', 32.5, '07/01/2025')
 	INSERT INTO [MST].[MST_Targets](KPI, [Target], [Active_From]) VALUES('Gerapporteerd', 80, '07/01/2025')
 	INSERT INTO [MST].[MST_Targets](KPI, [Target], [Active_From]) VALUES('Phish Prone', 3.1, '07/01/2025')
 	INSERT INTO [MST].[MST_Targets](KPI, [Target], [Active_From]) VALUES('Bekeken', 90, '07/01/2025')
 	INSERT INTO [MST].[MST_Targets](KPI, [Target], [Active_From]) VALUES('Policy', 95, '07/01/2025')
+
+	INSERT INTO [MST].[Source_status]([Source],Run_date, Max_fetches, Fetched_today, Warning_Percentage, Error_Percentage, finished) VALUES('KnowBe4',SYSDATETIME(),2000,0,75, 90, 0);
+	INSERT INTO [MST].[Source_status]([Source], Finished) VALUES('Hitas', 0);
+	INSERT INTO [MST].[Source_status]([Source], Finished) VALUES('DWH', 0);
 END
 GO

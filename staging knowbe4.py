@@ -15,10 +15,12 @@ class Main:
         self.database = database
         self.token = token
         self._connect()
-        self._printLogregel("Start of the Knowbe4 staging process")
+        self._printLogregel("Start of the Knowbe4 staging process", "INFO")
+        self._getFetchStatus()
         self._getToken()
         self.total_fetches = 0
         self.sleep_interval_short = 0.2
+        self.sleep_interval_medium = 1
         self.sleep_interval_long = 10
         self.batch_size = 10
         self._deleteStaging()
@@ -31,7 +33,31 @@ class Main:
         self._getPhishingRecipients()       # Import phing action by user
         self._getTrainingCampaigns()        # Import training campaigns
         self._getTrainingEnrollment()       # Import enrolled users
-        self._printLogregel(f"Totaal {self.total_fetches} aantal fetches")
+        self._putFetchStatus(1)
+
+    def _getFetchStatus(self):
+        sql = ("SELECT Run_date, Max_fetches, Fetched_Today, Warning_Percentage, Error_percentage "
+               "FROM [MST].[Source_status] WHERE [Source] = 'KnowBe4'")
+        self.cursor.execute(sql)
+        data = self.cursor.fetchall()
+        run_date, self.max_fetches, self.fetched_today, self.warning_perc, self.error_perc = data[0]
+        if run_date < date.today():
+            self.fetched_today = 0
+        return
+
+    def _putFetchStatus(self, finished):
+        if self.fetched_today + self.total_fetches > (self.error_perc / 100) * self.max_fetches:
+            message = "ERR"
+        elif self.fetched_today + self.total_fetches > (self.warning_perc / 100) * self.max_fetches:
+            message = "WARN"
+        else:
+            message = "INFO"
+        sql_update = (f"UPDATE [MST].[Source_status] SET Run_date = SYSDATETIME(), "
+                      f"Fetched_Today={self.fetched_today + self.total_fetches}, finished={finished} "
+                      f"WHERE [source] = 'KnowBe4'")
+        self.cursor.execute(sql_update)
+        self._printLogregel(f"Totaal {self.total_fetches} aantal fetches", message)
+        return
 
     def _getUsers(self):
         self.table = 'users'
@@ -53,7 +79,7 @@ class Main:
                 row = self._flatten(it)
                 if row["id"] is None:
                     # Log 1x voorbeeld en sla over
-                    self._printLogregel("[WARN] Item zonder id, sample:", json.dumps(it, ensure_ascii=False))
+                    self._printLogregel(f"Item zonder id, sample: {json.dumps(it, ensure_ascii=False)}", "WARN")
                     continue
                 batch.append((row["id"], row["ehash"], row["phish_prone_percentage"], row["hash_row"]))
                 self.users.append(row["id"])
@@ -63,7 +89,7 @@ class Main:
             self.page += 1
             time.sleep(self.sleep_interval_short)
         self.connection.commit()
-        self._printLogregel(f"Inserted users: {total_inserted}")
+        self._printLogregel(f"Inserted users: {total_inserted}", "INFO")
         time.sleep(self.sleep_interval_long)
         return
 
@@ -89,9 +115,9 @@ class Main:
                     time.sleep(self.sleep_interval_short)
         if batch:
             self.cursor.executemany(insert_sql, batch)
-            total_inserted += len(batch)
+            total_inserted = len(batch)
             self.connection.commit()
-        self._printLogregel(f"Inserted users with risk score: {total_inserted}")
+        self._printLogregel(f"Inserted users with risk score: {total_inserted}", "INFO")
         return
 
     def _getPhishingCampaigns(self):
@@ -115,7 +141,7 @@ class Main:
                 row = self._flatten(it)
                 if row["campaign_id"] is None:
                     # Log 1x voorbeeld en sla over
-                    self._printLogregel("[WARN] Item zonder id, sample:", json.dumps(it, ensure_ascii=False))
+                    self._printLogregel(f"Item zonder id, sample: {json.dumps(it, ensure_ascii=False)}", "WARN")
                     continue
                 # compare current_date with started_at + duration + 2 Years
                 finish_date = row["started_at"] + relativedelta(years=2) + timedelta(days=100)
@@ -129,16 +155,16 @@ class Main:
             self.page += 1
             time.sleep(self.sleep_interval_short)
         self.connection.commit()
-        self._printLogregel(f"Inserted phishing campaigns: {total_inserted}")
+        self._printLogregel(f"Inserted phishing campaigns: {total_inserted}", "INFO")
         time.sleep(self.sleep_interval_long)
         return
 
     def _getPhishingRecipients(self):
         self.table = 'phishing_recipients'
         total_inserted = 0
-        insert_sql = (f"INSERT INTO stg.Stg_kb4_Pst_Recipient(pst_id, [user_id], delivered_at, "
+        insert_sql = (f"INSERT INTO stg.Stg_kb4_Pst_Recipient(pst_id, [user_id], template, delivered_at, "
                       f"opened_at, clicked_at, replied_at, attachment_opened_at, macro_enabled_at, data_entered_at, "
-                      f"qr_code_scanned_at, reported_at, hash_row) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
+                      f"qr_code_scanned_at, reported_at, hash_row) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
         batch = list()
         self.page = 1
         self.page_size = 500
@@ -155,18 +181,17 @@ class Main:
                     break
                 for it in items:
                     row = self._flatten(it)
-                    batch.append((row["pst_id"], row["user_id"], row["delivered_at"],
+                    batch.append((row["pst_id"], row["user_id"], row["template"], row["delivered_at"],
                                   row["opened_at"], row["clicked_at"], row["replied_at"], row["attachment_opened_at"],
                                   row["macro_enabled_at"], row["data_entered_at"], row["qr_code_scanned"],
                                   row["reported_at"], row["hash_row"]))
-                    total_inserted += 1
                 time.sleep(self.sleep_interval_short)
                 self.page += 1
         if batch:
             self.cursor.executemany(insert_sql, batch)
-            total_inserted += len(batch)
+            total_inserted = len(batch)
             self.connection.commit()
-        self._printLogregel(f"Inserted users for phishing campaigns: {total_inserted}")
+        self._printLogregel(f"Inserted users for phishing campaigns: {total_inserted}", "INFO")
         return
 
     def _getTrainingCampaigns(self):
@@ -190,7 +215,7 @@ class Main:
                 row = self._flatten(it)
                 if row["campaign_id"] is None:
                     # Log 1x voorbeeld en sla over
-                    self._printLogregel("[WARN] Item zonder id, sample:", json.dumps(it, ensure_ascii=False))
+                    self._printLogregel(f"Item zonder id, sample:{json.dumps(it, ensure_ascii=False)}", "WARN")
                     continue
                 if row["status"] == "In Progress":
                     batch.append((row["campaign_id"], row["name"], row["status"], row["start_date"], row["hash_row"]))
@@ -201,7 +226,7 @@ class Main:
             self.page += 1
             time.sleep(self.sleep_interval_short)
         self.connection.commit()
-        self._printLogregel(f"Inserted training campaigns: {total_inserted}")
+        self._printLogregel(f"Inserted training campaigns: {total_inserted}", "INFO")
         time.sleep(self.sleep_interval_long)
         return
 
@@ -228,14 +253,13 @@ class Main:
                     row = self._flatten(it)
                     batch.append((row["enrollment_id"], campaign, row["user_id"], row["enrollment_date"],
                                   row["status"], row["hash_row"]))
-                    total_inserted += 1
-                time.sleep(self.sleep_interval_short)
+                time.sleep(self.sleep_interval_medium)
                 self.page += 1
         if batch:
             self.cursor.executemany(insert_sql, batch)
-            total_inserted += len(batch)
+            total_inserted = len(batch)
             self.connection.commit()
-        self._printLogregel(f"Inserted users for training campaigns: {total_inserted}")
+        self._printLogregel(f"Inserted users for training campaigns: {total_inserted}", "INFO")
         return
 
     def _flatten(self, item):
@@ -268,6 +292,8 @@ class Main:
             pst_id = item.get("pst_id")
             user = item.get("user")
             user_id = user.get("id")
+            template = item.get("template")
+            template_name = template.get("name")
             delivered_at = to_date_or_none(item.get("delivered_at"))
             opened_at = to_date_or_none(item.get("opened_at"))
             clicked_at = to_date_or_none(item.get("clicked_at"))
@@ -281,7 +307,7 @@ class Main:
                      str(clicked_at) + str(replied_at) + str(attachment_opened_at) + str(macro_enabled_at) +
                      str(data_entered_at) + str(qr_code_scanned) + str(reported_at))
             hashrow = hashlib.sha256(total.encode("utf-8")).digest()
-            return {"pst_id": pst_id, "user_id": user_id, "delivered_at": delivered_at,
+            return {"pst_id": pst_id, "user_id": user_id, "template": template_name, "delivered_at": delivered_at,
                     "opened_at": opened_at, "clicked_at": clicked_at, "replied_at": replied_at,
                     "attachment_opened_at": attachment_opened_at, "macro_enabled_at": macro_enabled_at,
                     "data_entered_at": data_entered_at, "qr_code_scanned": qr_code_scanned,
@@ -334,19 +360,22 @@ class Main:
             self.token = 'KNOWBE4_TOKEN'
         api_token = os.getenv(self.token)
         if not api_token:
-            self._printLogregel(f"[ERROR] API-token ontbreekt. Stel {self.token} in als omgevingsvariabele.")
+            self._printLogregel(f"API-token ontbreekt. Stel {self.token} in als omgevingsvariabele.", "ERR")
             sys.exit()
         self.headers = {
             "Authorization": f"Bearer {api_token}",
             "Accept": "application/json"
         }
 
-    def _printLogregel(self, regel):
+    def _printLogregel(self, regel, message):
         timestamp = datetime.today().strftime('%Y-%m-%d %H:%M:%S')
         time.sleep(1)
-        input_query = f"INSERT INTO [MST].[LogData]([Timestamp], [Log regel]) VALUES('{timestamp}', '{regel}')"
+        input_query = (f"INSERT INTO [MST].[LogData]([Timestamp], [Source], [Severity], [Log regel]) "
+                       f"VALUES(SYSDATETIME(),'KnowBe4', '{message}', '{regel}')")
         self.cursor.execute(input_query)
         self.cursor.commit()
+        if message == "ERR":
+            self._putFetchStatus(0)
         return
 
     def _fetch_page(self):
@@ -356,10 +385,10 @@ class Main:
         ct = (resp.headers.get("Content-Type") or "").lower()
         self.total_fetches += 1
         if resp.status_code >= 400:
-            self._printLogregel(f"HTTP {resp.status_code}: {resp.text}")
+            self._printLogregel(f"HTTP {resp.status_code}: {resp.text}", "ERR")
             sys.exit()
         if "application/json" not in ct:
-            self._printLogregel(f"Geen JSON (Content-Type={ct})  url={resp.url}\nBody:\n{resp.text}")
+            self._printLogregel(f"Geen JSON (Content-Type={ct})  url={resp.url}\nBody:\n{resp.text}", "ERR")
             sys.exit()
         return resp.json()
 
