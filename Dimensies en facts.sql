@@ -1,4 +1,4 @@
-USE [KPI Database];
+﻿USE [KPI Database];
 GO
 
 -- Staging van master tables
@@ -99,41 +99,91 @@ AS
 BEGIN
     SET NOCOUNT ON;
 
-    DECLARE @LoadTs DATETIME2 = SYSDATETIME();
+    DECLARE @LoadTs     DATETIME2 = SYSDATETIME();
+    DECLARE @CutoffDate DATE	  = DATEADD(YEAR, -2, CAST(@LoadTs AS DATE));  -- alles ouder dan 2 jaar sluiten
 
-    ----------------------------------------------------------------
-    -- 1) Sluit gewijzigde current records af
-    ----------------------------------------------------------------
-    ;WITH phishing_src AS (SELECT p.campaign_id , CAST('phishing' AS VARCHAR(20)) AS campaign_type, MIN(p.[name]) AS [name], MAX(p.[status]) AS [status], MIN(CAST(p.started_at AS DATE)) AS start_date
-							FROM STG.Stg_kb4_Pst p GROUP BY p.campaign_id),
-		  training_src AS (SELECT tc.campaign_id, IIF(UPPER(mt.[Type]) = 'P', 'policy', 'training') AS campaign_type, MIN(tc.[name]) AS [name], MAX(tc.[status]) AS [status], MIN(tc.start_date) AS start_date
-							FROM STG.Stg_kb4_Training_Campaign tc LEFT JOIN STG.stg_md_Training mt ON mt.[Name] = LEFT(tc.[name],LEN(mt.[Name])) GROUP BY tc.campaign_id,IIF(UPPER(mt.[Type]) = 'P', 'policy', 'training')),
-		  src_union AS (SELECT * FROM phishing_src UNION ALL SELECT * FROM training_src),
-		  src AS (SELECT s.campaign_id, s.campaign_type, s.[name], s.[status], s.start_date, d.date_key AS start_date_key
-					FROM src_union s LEFT JOIN DWH.dim_date d ON d.[date] = s.start_date)
-	 UPDATE d SET d.effective_to = @LoadTs, d.is_current   = 0
-		FROM DWH.dim_campaign d JOIN src s ON s.campaign_id   = d.campaign_id AND s.campaign_type = d.campaign_type
-		WHERE d.is_current = 1 AND (ISNULL(d.[name], '') <> ISNULL(s.[name], '')
-								OR ISNULL(d.[status], '') <> ISNULL(s.[status], '')
-							    OR ISNULL(d.start_date_key, -1) <> ISNULL(s.start_date_key, -1));
+    -- temp tabel met alle (actieve) campagnes uit staging
+    IF OBJECT_ID('tempdb..#src') IS NOT NULL
+        DROP TABLE #src;
 
-    ----------------------------------------------------------------
-    -- 2) Voeg nieuwe of gewijzigde records toe
-    ----------------------------------------------------------------
-    ;WITH phishing_src AS (SELECT p.campaign_id , CAST('phishing' AS VARCHAR(20)) AS campaign_type, MIN(p.[name]) AS [name], MAX(p.[status]) AS [status], MIN(CAST(p.started_at AS DATE)) AS start_date
-							FROM STG.Stg_kb4_Pst p GROUP BY p.campaign_id),
-		  training_src AS (SELECT tc.campaign_id, IIF(UPPER(mt.[Type]) = 'P', 'policy', 'training') AS campaign_type, MIN(tc.[name]) AS [name], MAX(tc.[status]) AS [status], MIN(tc.start_date) AS start_date
-							FROM STG.Stg_kb4_Training_Campaign tc LEFT JOIN STG.stg_md_Training mt ON mt.[Name] = LEFT(tc.[name],LEN(mt.[Name])) GROUP BY tc.campaign_id,IIF(UPPER(mt.[Type]) = 'P', 'policy', 'training')),
-		  src_union AS (SELECT * FROM phishing_src UNION ALL SELECT * FROM training_src),
-		  src AS (SELECT s.campaign_id, s.campaign_type, s.[name], s.[status], s.start_date, d.date_key AS start_date_key
-					FROM src_union s LEFT JOIN DWH.dim_date d ON d.[date] = s.start_date)
-		INSERT INTO DWH.dim_campaign (campaign_id, campaign_type, [name], [status], start_date_key, effective_from, effective_to, is_current)
-			SELECT s.campaign_id, s.campaign_type, s.[name], s.[status], s.start_date_key, @LoadTs, NULL, 1
-				FROM src s
-				LEFT JOIN DWH.dim_campaign d ON d.campaign_id   = s.campaign_id AND d.campaign_type = s.campaign_type AND d.is_current    = 1
-				WHERE d.campaign_id IS NULL OR ISNULL(d.[name], '') <> ISNULL(s.[name], '')
-		   OR ISNULL(d.[status], '')       <> ISNULL(s.[status], '')
-		   OR ISNULL(d.start_date_key, -1) <> ISNULL(s.start_date_key, -1);
+    CREATE TABLE #src (
+          campaign_id    BIGINT       NOT NULL
+        , campaign_type  VARCHAR(20)  NOT NULL
+        , [name]         VARCHAR(255) NULL
+        , [status]       VARCHAR(50)  NULL
+        , start_date_key INT          NULL
+    );
+
+    ------------------------------------------------------------------------
+    -- BRON OPBOUWEN: phishing (gefilterd op Active=1 en niet ouder dan 2 jaar)
+    --                + training/policy (zoals voorheen)
+    ------------------------------------------------------------------------
+    ;WITH phishing_base AS (
+        -- 1 regel per phishing campaign_id
+        SELECT p.campaign_id, MIN(p.[name]) AS [name], MAX(p.[status]) AS [status], MIN(CAST(p.started_at AS DATE)) AS start_date, MAX(DATEADD(DAY, ISNULL(p.duration_days,0),CAST(p.started_at AS DATE))) AS campaign_end_date
+			FROM STG.Stg_kb4_Pst p
+			GROUP BY p.campaign_id),
+    phishing_filtered AS (
+        -- alleen actieve phishing campagnes uit de master én niet ouder dan 2 jaar
+        SELECT pb.campaign_id, pb.[name], pb.[status], pb.start_date
+			FROM phishing_base pb
+			JOIN STG.stg_md_Phishing mp ON mp.Campaign_id = pb.campaign_id AND mp.[Active] = 1
+			WHERE pb.campaign_end_date >= @CutoffDate),
+    
+	training_base AS (
+        -- training + policy (type uit stg_md_Training)
+        SELECT tc.campaign_id, CASE UPPER(mt.[Type]) WHEN 'P' THEN 'policy' ELSE 'training' END AS campaign_type, MIN(tc.[name]) AS [name], MAX(tc.[status]) AS [status], MIN(tc.start_date) AS start_date
+			FROM STG.Stg_kb4_Training_Campaign tc
+			LEFT JOIN STG.stg_md_Training mt ON UPPER(mt.[Name]) = LEFT(UPPER(tc.[name]),LEN(mt.[Name]))
+			GROUP BY tc.campaign_id, CASE UPPER(mt.[Type]) WHEN 'P' THEN 'policy' ELSE 'training' END),
+    
+	src_union AS (
+        SELECT pf.campaign_id, CAST('phishing' AS VARCHAR(20)) AS campaign_type, pf.[name], pf.[status], pf.start_date
+			FROM phishing_filtered pf
+
+        UNION ALL
+
+        SELECT tb.campaign_id, tb.campaign_type, tb.[name], tb.[status], tb.start_date
+			FROM training_base tb),
+    src_final AS (
+        SELECT s.campaign_id, s.campaign_type, s.[name], s.[status], s.start_date, d.date_key AS start_date_key
+			FROM src_union s
+			LEFT JOIN DWH.dim_date d ON d.[date] = s.start_date)
+    
+	INSERT INTO #src (campaign_id, campaign_type, [name], [status], start_date_key)
+		SELECT campaign_id, campaign_type, [name], [status], start_date_key
+			FROM src_final;
+
+    ------------------------------------------------------------------------
+    -- STAP 1: sluit huidige PHISHING campagnes die NIET meer in #src staan
+    --         (dus: niet meer active=1, of ouder dan 2 jaar)
+    ------------------------------------------------------------------------
+    UPDATE d
+		SET  d.effective_to = @LoadTs,
+			d.is_current   = 0
+		FROM DWH.dim_campaign d
+		LEFT JOIN #src s ON s.campaign_id   = d.campaign_id AND s.campaign_type = d.campaign_type
+		WHERE d.campaign_type = 'phishing' AND d.is_current = 1 AND s.campaign_id   IS NULL;
+
+    ------------------------------------------------------------------------
+    -- STAP 2: sluit alle campagnes (phishing + training + policy) waarvan
+    --         attribuutwijzigingen zijn t.o.v. #src (SCD2-change)
+    ------------------------------------------------------------------------
+    UPDATE d
+		SET  d.effective_to = @LoadTs,
+			 d.is_current   = 0
+			FROM DWH.dim_campaign d
+			JOIN #src s ON s.campaign_id = d.campaign_id AND s.campaign_type = d.campaign_type
+			WHERE d.is_current = 1 AND (ISNULL(d.[name], '') <> ISNULL(s.[name], '') OR ISNULL(d.[status], '') <> ISNULL(s.[status], '') OR ISNULL(d.start_date_key, -1) <> ISNULL(s.start_date_key, -1));
+
+    ------------------------------------------------------------------------
+    -- STAP 3: voeg nieuwe/gewijzigde campagnes toe als nieuwe SCD2-rand
+    ------------------------------------------------------------------------
+    INSERT INTO DWH.dim_campaign (campaign_id, campaign_type, [name], [status], start_date_key, effective_from, effective_to, is_current)
+		SELECT s.campaign_id, s.campaign_type, s.[name], s.[status], s.start_date_key, @LoadTs AS effective_from, NULL AS effective_to, 1 AS is_current
+			FROM #src s
+			LEFT JOIN DWH.dim_campaign d ON d.campaign_id = s.campaign_id AND d.campaign_type = s.campaign_type AND d.is_current = 1
+			WHERE d.campaign_id IS NULL OR ISNULL(d.[name], '') <> ISNULL(s.[name], '') OR ISNULL(d.[status], '') <> ISNULL(s.[status], '') OR ISNULL(d.start_date_key, -1) <> ISNULL(s.start_date_key, -1);
 END;
 GO
 
@@ -162,7 +212,7 @@ BEGIN
 
     IF @EndDate < @StartDate
     BEGIN
-        RAISERROR('EndDate mag niet v��r StartDate liggen.', 16, 1);
+        RAISERROR('EndDate mag niet vóór StartDate liggen.', 16, 1);
         RETURN;
     END;
 
@@ -242,25 +292,110 @@ AS
 BEGIN
     SET NOCOUNT ON;
 
-    DECLARE @LoadTs DATETIME2 = SYSDATETIME();
-
-    -- Full refresh
-    TRUNCATE TABLE DWH.fact_pst_recipient_result;
-
-    ;WITH src AS (SELECT r.pst_id, r.user_id, CASE WHEN r.delivered_at IS NOT NULL THEN 1 ELSE 0 END AS delivered_count, CASE WHEN r.opened_at IS NOT NULL THEN 1 ELSE 0 END AS opens_count
-				, CASE WHEN r.clicked_at IS NOT NULL THEN 1 ELSE 0 END AS clicks_count, CASE WHEN r.replied_at IS NOT NULL THEN 1 ELSE 0 END AS replies_count, CASE WHEN r.attachment_opened_at IS NOT NULL THEN 1 ELSE 0 END AS attachments_opened
-				, CASE WHEN r.data_entered_at IS NOT NULL THEN 1 ELSE 0 END AS data_entered, CASE WHEN r.reported_at IS NOT NULL THEN 1 ELSE 0 END AS reported_count
-					FROM STG.Stg_kb4_Pst_Recipient r)
-    INSERT INTO DWH.fact_pst_recipient_result (user_key, campaign_key, template_key, pst_id, result_status, delivered_count, opens_count, clicks_count, replies_count, attachments_opened, data_entered, reported_count, started_date_key, duration_seconds, load_ts)
-		SELECT	du.user_key, dc.campaign_key, dt.template_key, s.pst_id, NULL AS result_status   -- eventueel later afleiden uit events
-				, s.delivered_count, s.opens_count, s.clicks_count, s.replies_count, s.attachments_opened, s.data_entered, s.reported_count, dd.date_key AS started_date_key
-				, CASE WHEN p.duration_days IS NOT NULL THEN p.duration_days * 86400 ELSE NULL END AS duration_seconds, @LoadTs
-		FROM src s
-		JOIN STG.Stg_kb4_Pst p ON p.pst_id = s.pst_id
-		JOIN DWH.dim_user du ON du.user_id   = s.user_id AND du.is_current = 1
-		JOIN DWH.dim_campaign dc ON dc.campaign_id   = p.campaign_id AND dc.campaign_type = 'phishing' AND dc.is_current    = 1
-		LEFT JOIN DWH.dim_template dt ON dt.template_name = p.[name] AND dt.is_current = 1
-		LEFT JOIN DWH.dim_date dd ON dd.[date] = CAST(p.started_at AS DATE);
+    ;WITH src AS (
+        SELECT 
+              r.pst_id
+            , r.user_id
+            , CASE WHEN r.delivered_at           IS NOT NULL THEN 1 ELSE 0 END AS delivered_count
+            , CASE WHEN r.opened_at              IS NOT NULL THEN 1 ELSE 0 END AS opens_count
+            , CASE WHEN r.clicked_at             IS NOT NULL THEN 1 ELSE 0 END AS clicks_count
+            , CASE WHEN r.replied_at             IS NOT NULL THEN 1 ELSE 0 END AS replies_count
+            , CASE WHEN r.attachment_opened_at   IS NOT NULL THEN 1 ELSE 0 END AS attachments_opened
+            , CASE WHEN r.data_entered_at        IS NOT NULL THEN 1 ELSE 0 END AS data_entered
+            , CASE WHEN r.reported_at            IS NOT NULL THEN 1 ELSE 0 END AS reported_count
+            , r.load_ts                                          AS src_load_ts
+            , p.campaign_id
+            , p.started_at
+            , p.duration_days
+            , p.[name]                                          AS template_name
+        FROM STG.Stg_kb4_Pst_Recipient r
+        JOIN STG.Stg_kb4_Pst p 
+          ON p.pst_id = r.pst_id
+    ),
+    src_mapped AS (
+        SELECT
+            du.user_key,
+            dc.campaign_key,
+            dt.template_key,
+            s.pst_id,
+            s.user_id,
+            s.delivered_count,
+            s.opens_count,
+            s.clicks_count,
+            s.replies_count,
+            s.attachments_opened,
+            s.data_entered,
+            s.reported_count,
+            dd.date_key AS started_date_key,
+            CASE WHEN s.duration_days IS NOT NULL THEN s.duration_days * 86400 ELSE NULL END AS duration_seconds,
+            s.src_load_ts
+        FROM src s
+        JOIN DWH.dim_user du
+          ON du.user_id    = s.user_id
+         AND du.is_current = 1
+        JOIN DWH.dim_campaign dc
+          ON dc.campaign_id   = s.campaign_id
+         AND dc.campaign_type = 'phishing'
+         AND dc.is_current    = 1
+        LEFT JOIN DWH.dim_template dt
+          ON dt.template_name = s.template_name
+         AND dt.is_current    = 1
+        LEFT JOIN DWH.dim_date dd
+          ON dd.[date] = CAST(s.started_at AS date)
+    )
+    MERGE DWH.fact_pst_recipient_result AS tgt
+    USING src_mapped AS src
+       ON tgt.pst_id   = src.pst_id
+      AND tgt.user_key = src.user_key
+    WHEN MATCHED THEN
+        UPDATE SET
+            tgt.campaign_key       = src.campaign_key,
+            tgt.template_key       = src.template_key,
+            tgt.delivered_count    = src.delivered_count,
+            tgt.opens_count        = src.opens_count,
+            tgt.clicks_count       = src.clicks_count,
+            tgt.replies_count      = src.replies_count,
+            tgt.attachments_opened = src.attachments_opened,
+            tgt.data_entered       = src.data_entered,
+            tgt.reported_count     = src.reported_count,
+            tgt.started_date_key   = src.started_date_key,
+            tgt.duration_seconds   = src.duration_seconds
+            -- LET OP: load_ts níet updaten → eerste loaddatum blijft staan
+    WHEN NOT MATCHED BY TARGET THEN
+        INSERT (
+              user_key
+            , campaign_key
+            , template_key
+            , pst_id
+            , result_status
+            , delivered_count
+            , opens_count
+            , clicks_count
+            , replies_count
+            , attachments_opened
+            , data_entered
+            , reported_count
+            , started_date_key
+            , duration_seconds
+            , load_ts
+        )
+        VALUES (
+              src.user_key
+            , src.campaign_key
+            , src.template_key
+            , src.pst_id
+            , NULL
+            , src.delivered_count
+            , src.opens_count
+            , src.clicks_count
+            , src.replies_count
+            , src.attachments_opened
+            , src.data_entered
+            , src.reported_count
+            , src.started_date_key
+            , src.duration_seconds
+            , src.src_load_ts      -- staging-load_ts van eerste keer
+        );
 END;
 GO
 
@@ -269,16 +404,55 @@ AS
 BEGIN
     SET NOCOUNT ON;
 
-    DECLARE @LoadTs DATETIME2 = SYSDATETIME();
-
-    TRUNCATE TABLE DWH.fact_training_enrollment;
-
-    INSERT INTO DWH.fact_training_enrollment (user_key, campaign_key, enrollment_id, [status], enrollment_date_key, completion_date_key, load_ts)
-		SELECT du.user_key, dc.campaign_key, e.enrollment_id, e.[status], ded.date_key AS enrollment_date_key, NULL AS completion_date_key, @LoadTs
-			FROM STG.Stg_kb4_Training_Enrollment e
-			JOIN DWH.dim_user du ON du.user_id   = e.user_id AND du.is_current = 1
-			JOIN DWH.dim_campaign dc ON dc.campaign_id   = e.campaign_id AND dc.campaign_type IN('training', 'policy') AND dc.is_current    = 1
-			LEFT JOIN DWH.dim_date ded ON ded.[date] = CAST(e.enrollment_date AS DATE);
+    ;WITH src AS (
+        SELECT
+              du.user_key
+            , dc.campaign_key
+            , e.enrollment_id
+            , e.[status]
+            , ded.date_key AS enrollment_date_key
+            , e.load_ts    AS src_load_ts   -- staging-load_ts
+        FROM STG.Stg_kb4_Training_Enrollment e
+        JOIN DWH.dim_user du
+          ON du.user_id    = e.user_id
+         AND du.is_current = 1
+        JOIN DWH.dim_campaign dc
+          ON dc.campaign_id   = e.campaign_id
+         AND dc.campaign_type IN ('training','policy')
+         AND dc.is_current    = 1
+        LEFT JOIN DWH.dim_date ded
+          ON ded.[date] = CAST(e.enrollment_date AS date)
+    )
+    MERGE DWH.fact_training_enrollment AS tgt
+    USING src
+       ON tgt.enrollment_id = src.enrollment_id
+    WHEN MATCHED THEN
+        UPDATE SET
+              tgt.user_key            = src.user_key
+            , tgt.campaign_key        = src.campaign_key
+            , tgt.[status]            = src.[status]
+            , tgt.enrollment_date_key = src.enrollment_date_key
+            -- tgt.completion_date_key blijft zoals hij is
+            -- tgt.load_ts NIET updaten: eerste loaddatum behouden
+    WHEN NOT MATCHED BY TARGET THEN
+        INSERT (
+              user_key
+            , campaign_key
+            , enrollment_id
+            , [status]
+            , enrollment_date_key
+            , completion_date_key
+            , load_ts
+        )
+        VALUES (
+              src.user_key
+            , src.campaign_key
+            , src.enrollment_id
+            , src.[status]
+            , src.enrollment_date_key
+            , NULL           -- geen completion info in STG
+            , src.src_load_ts
+        );
 END;
 GO
 

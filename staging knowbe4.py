@@ -143,12 +143,9 @@ class Main:
                     # Log 1x voorbeeld en sla over
                     self._printLogregel(f"Item zonder id, sample: {json.dumps(it, ensure_ascii=False)}", "WARN")
                     continue
-                # compare current_date with started_at + duration + 2 Years
-                finish_date = row["started_at"] + relativedelta(years=2) + timedelta(days=100)
-                if datetime.today() > finish_date:
-                    batch.append((row["campaign_id"], row["pst_id"], row["status"], row["name"],
-                                  row["started_at"], row["duration"], row["hash_row"]))
-                    self.phishing_campaigns.append(row["pst_id"])
+                batch.append((row["campaign_id"], row["pst_id"], row["status"], row["name"],
+                              row["started_at"], row["duration"], row["hash_row"]))
+                self.phishing_campaigns.append(row["pst_id"])
             if batch:
                 self.cursor.executemany(insert_sql, batch)
                 total_inserted += len(batch)
@@ -185,7 +182,7 @@ class Main:
                                   row["opened_at"], row["clicked_at"], row["replied_at"], row["attachment_opened_at"],
                                   row["macro_enabled_at"], row["data_entered_at"], row["qr_code_scanned"],
                                   row["reported_at"], row["hash_row"]))
-                time.sleep(self.sleep_interval_short)
+                time.sleep(self.sleep_interval_medium)
                 self.page += 1
         if batch:
             self.cursor.executemany(insert_sql, batch)

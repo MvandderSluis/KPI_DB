@@ -568,5 +568,6 @@ BEGIN
 	INSERT INTO [MST].[Source_status]([Source],Run_date, Max_fetches, Fetched_today, Warning_Percentage, Error_Percentage, finished) VALUES('KnowBe4',SYSDATETIME(),2000,0,75, 90, 0);
 	INSERT INTO [MST].[Source_status]([Source], Finished) VALUES('Hitas', 0);
 	INSERT INTO [MST].[Source_status]([Source], Finished) VALUES('DWH', 0);
+	INSERT INTO [MST].[Source_status]([Source], Finished) VALUES('Master', 0);
 END
 GO
