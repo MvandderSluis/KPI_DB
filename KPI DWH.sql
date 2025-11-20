@@ -530,7 +530,6 @@ BEGIN
 		[Error_Percentage]		INT				NULL,
 		[Finished]				BIT				NOT NULL,
 		CONSTRAINT [PK_MST_Source_status] PRIMARY KEY CLUSTERED (Source)
-	);
 END
 GO
 

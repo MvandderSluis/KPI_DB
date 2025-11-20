@@ -1,441 +1,241 @@
-import os, time, io, csv
-import json
-import datetime
 import sys
-
-import requests
-import pyodbc
-import hashlib
-import math
 import argparse
+import pyodbc
+from PyQt5 import QtWidgets as qtw, QtCore as qtc
 
 
-class Main:
-    def __init__(self, server=None, database=None, token=None):
-        # Initialize
-        if server:
-            self.server = server
-        else:
+class SqlTableEditor(qtw.QWidget):
+    """
+    Generieke editor voor eenvoudige SQL-tabellen.
+    Kan read-only of volledig mutabel zijn.
+    """
+
+    def __init__(self, connection, table_name, columns, order_by=None, read_only=False, parent=None):
+        super().__init__(parent)
+
+        self.connection = connection
+        self.cursor = connection.cursor()
+        self.table_name = table_name
+        self.columns = columns
+        self.order_by = order_by or columns[0]
+        self.read_only = read_only
+
+        layout = qtw.QVBoxLayout(self)
+
+        # Tabel
+        self.table = qtw.QTableWidget()
+        self.table.setColumnCount(len(self.columns))
+        self.table.setHorizontalHeaderLabels(self.columns)
+        self.table.horizontalHeader().setStretchLastSection(True)
+        self.table.horizontalHeader().setSectionResizeMode(qtw.QHeaderView.Stretch)
+
+        # Bij read-only: cellen niet bewerkbaar
+        if self.read_only:
+            self.table.setEditTriggers(qtw.QAbstractItemView.NoEditTriggers)
+
+        layout.addWidget(self.table)
+
+        # Knoppen onderaan
+        self.btn_layout = qtw.QHBoxLayout()
+        self.btn_add = qtw.QPushButton("Rij toevoegen")
+        self.btn_delete = qtw.QPushButton("Geselecteerde rij(en) verwijderen")
+        self.btn_save = qtw.QPushButton("Opslaan naar database")
+        self.btn_refresh = qtw.QPushButton("Verversen")
+
+        self.btn_add.clicked.connect(self.add_row)
+        self.btn_delete.clicked.connect(self.delete_selected_rows)
+        self.btn_save.clicked.connect(self.save_changes)
+        self.btn_refresh.clicked.connect(self.load_data)
+
+        # Bij read-only: knoppen verbergen
+        if not self.read_only:
+            self.btn_layout.addWidget(self.btn_add)
+            self.btn_layout.addWidget(self.btn_delete)
+            self.btn_layout.addWidget(self.btn_save)
+        self.btn_layout.addWidget(self.btn_refresh)
+        self.btn_layout.addStretch()
+
+        layout.addLayout(self.btn_layout)
+
+        self.load_data()
+
+    # ---------- Data laden / muteren ----------
+
+    def load_data(self):
+        self.table.setRowCount(0)
+        try:
+            sql = f"SELECT {', '.join(self.columns)} FROM {self.table_name}  ORDER BY {self.order_by}"
+            self.cursor.execute(sql)
+            rows = self.cursor.fetchall()
+
+            for r_idx, row in enumerate(rows):
+                self.table.insertRow(r_idx)
+                for c_idx, value in enumerate(row):
+                    text = "" if value is None else str(value)
+                    item = qtw.QTableWidgetItem(text)
+
+                    if self.read_only:
+                        # Bij read-only ook cellen op "enabled but not editable"
+                        item.setFlags(item.flags() & ~qtc.Qt.ItemIsEditable)
+
+                    self.table.setItem(r_idx, c_idx, item)
+
+        except Exception as e:
+            qtw.QMessageBox.critical(self, "Fout bij laden", f"Fout bij het laden van {self.table_name}:\n{e}")
+
+    # --- Alleen mutabel als read_only=False ---
+
+    def add_row(self):
+        if self.read_only:
+            return
+        self.table.insertRow(self.table.rowCount())
+
+    def delete_selected_rows(self):
+        if self.read_only:
+            return
+        selected = self.table.selectionModel().selectedRows()
+        for index in sorted(selected, key=lambda x: x.row(), reverse=True):
+            self.table.removeRow(index.row())
+
+    def save_changes(self):
+        if self.read_only:
+            return
+
+        reply = qtw.QMessageBox.question(self, "Bevestigen", f"Alle bestaande records in {self.table_name} "
+                                                             f"worden overschreven.\n Doorgaan?",
+                                         qtw.QMessageBox.Yes | qtw.QMessageBox.No)
+        if reply != qtw.QMessageBox.Yes:
+            return
+
+        try:
+            self.connection.autocommit = False
+            self.cursor.execute(f"DELETE FROM {self.table_name}")
+
+            col_list = ", ".join(self.columns)
+            params = ", ".join(["?"] * len(self.columns))
+            insert_sql = f"INSERT INTO {self.table_name} ({col_list}) VALUES ({params})"
+
+            for r in range(self.table.rowCount()):
+                values = []
+                for c in range(len(self.columns)):
+                    item = self.table.item(r, c)
+                    text = item.text().strip() if item else ""
+                    values.append(text if text != "" else None)
+
+                if all(v is None for v in values):
+                    continue
+
+                self.cursor.execute(insert_sql, values)
+
+            self.connection.commit()
+            self.connection.autocommit = True
+
+            qtw.QMessageBox.information(self, "Opgeslagen", f"Wijzigingen zijn opgeslagen in {self.table_name}.")
+            self.load_data()
+
+        except Exception as e:
+            self.connection.rollback()
+            self.connection.autocommit = True
+            qtw.QMessageBox.critical(self, "Fout bij opslaan", f"Er is een fout opgetreden "
+                                                               f"bij het opslaan van {self.table_name}:\n{e}")
+
+
+class MainWindow(qtw.QMainWindow):
+    def __init__(self, settings):
+        super().__init__()
+
+        self.server = settings.get("server")
+        self.database = settings.get("database")
+        self.version = 0.1
+
+        self._connect()
+
+        self.setWindowTitle(f"KPI beheer app v{self.version}")
+        self.resize(900, 600)
+        # Menustructuur
+        menubar = self.menuBar()
+        log_menu = menubar.addMenu('Logbestanden')
+        table_menu = menubar.addMenu('Tabelonderhoud')
+
+        # Acties
+        action_units = table_menu.addAction('Units')
+        action_targets = table_menu.addAction("Targets")
+        action_phishing = table_menu.addAction("Phishing")
+        action_training = table_menu.addAction("Training")
+        action_etl_log = log_menu.addAction('ETL logging')
+        action_etl_status = log_menu.addAction('ETL status')
+        # triggers
+        action_targets.triggered.connect(lambda: self._open_table('targets'))
+        action_units.triggered.connect(lambda: self._open_table('units'))
+        action_phishing.triggered.connect(lambda: self._open_table('phishing'))
+        action_training.triggered.connect(lambda: self._open_table('training'))
+        action_etl_log.triggered.connect(lambda: self._open_table('etl_log'))
+        action_etl_status.triggered.connect(lambda: self._open_table('etl_status'))
+
+        # Centrale widget: tabbladen voor meerdere tabellen
+        self.tabs = qtw.QTabWidget()
+        self.setCentralWidget(self.tabs)
+
+        self.show()
+
+    def _open_table(self, tab_name):
+        # Controleer of tab al bestaat
+        for i in range(self.tabs.count()):
+            if self.tabs.tabText(i) == tab_name:
+                self.tabs.setCurrentIndex(i)
+                return
+
+        # Nieuw tabblad aanmaken
+        if tab_name == 'units':
+            editor = SqlTableEditor(connection=self.connection, table_name="MST.MST_Units",
+                                    columns=["Unit", "[Unit name]"], order_by="Unit", read_only=False)
+        elif tab_name == 'targets':
+            editor = SqlTableEditor(connection=self.connection, table_name="MST.MST_Targets",
+                                    columns=["KPI", "Target", "Active", "Active_From", "Active_To"], order_by="KPI",
+                                    read_only=False,)
+        elif tab_name == 'phishing':
+            editor = SqlTableEditor(connection=self.connection, table_name='MST.MST_Phishing_Campaigns',
+                                    columns=["Campaign_id", "Name", "Active"], order_by="Name")
+        elif tab_name == 'training':
+            editor = SqlTableEditor(connection=self.connection, table_name='MST.MST_Training_Campaigns',
+                                    columns=["Name", "Active", "Type"], order_by="Name", read_only=False)
+        elif tab_name == 'etl_log':
+            editor = SqlTableEditor(connection=self.connection, table_name='MST.Logdata',
+                                    columns=['Timestamp', 'Source', 'Severity', '[Log regel]'],
+                                    order_by='Timestamp DESC', read_only=True)
+        elif tab_name == 'etl_status':
+            editor = SqlTableEditor(connection=self.connection, table_name='MST.Source_status',
+                                    columns=["Source", "Run_date", "Max_fetches", "Fetched_today", "Finished"],
+                                    order_by="Source", read_only=True)
+        self.tabs.addTab(editor, tab_name)
+        self.tabs.setCurrentIndex(self.tabs.count() - 1)
+
+    def _connect(self):
+        if not self.server:
             self.server = r'HI000090\SQLEXPRESS'
-        if database:
-            self.database = database
-        else:
-            self.database = 'KPI DB'
-        if not token:
-            token = "KNOWBE4_TOKEN"
-        self.connect()
+        if not self.database:
+            self.database = 'KPI database'
+
+        connection_string = (
+            "DRIVER={ODBC Driver 17 for SQL Server};"
+            f"SERVER={self.server};"
+            f"DATABASE={self.database};"
+            "Trusted_Connection=yes;"
+        )
+        self.connection = pyodbc.connect(connection_string)
         self.cursor = self.connection.cursor()
         self.cursor.fast_executemany = True
-        api_token = os.getenv(token)
-        if not api_token:
-            self._printLogregel(f"[ERROR] API-token ontbreekt. Stel {token} in als omgevingsvariabele.")
-            sys.exit()
-        self.page_size = 500
-        self.headers = {
-            "Authorization": f"Bearer {api_token}",
-            "Accept": "application/json"
-        }
-
-        # Empty tables
-        self.emptyTables()
-        # Get users
-        self.getUsers()
-        time.sleep(10)
-        # Get Risico scores
-        self.getRiskScore()
-        time.sleep(10)
-        # Get phishing Campaigns
-        self.getCampaigns()
-        time.sleep(10)
-        # Get responses
-        self.getResponses()
-        time.sleep(10)
-        # Get Training campaigns
-        self.getTrainingCampaigns()
-        time.sleep(10)
-        # Get Trainings Campaigns followed
-        self.getTrainingCampaignsFollowed()
-        # History update
-        procedure = 'EXEC [dbo].[set_history]'
-        self.cursor.execute(procedure)
-        self.cursor.commit()
-        self.cursor.close()
-        return
-
-    def getUsers(self):
-        table = 'users'
-        page = 1
-        total_inserted = 0
-        insert_sql = "INSERT INTO dbo.Users (id, ehash, phish_prone_percentage, status) VALUES (?, ?, ?, ?)"
-        api_url = "https://eu.api.knowbe4.com/v1/users"
-        while True:
-            data = self.fetch_page(self.headers, api_url, page, self.page_size)
-            # Bepaal items robuust
-            if isinstance(data, list):
-                items = data
-            elif isinstance(data, dict):
-                # Probeer gangbare keys, val terug op de eerste list in de dict
-                items = data.get("data") or data.get("items") or data.get("users") or []
-            else:
-                items = []
-            if not items:
-                break
-            batch = []
-            for it in items:
-                row = flatten(it, table)
-                if row["id"] is None:
-                    # Log 1x voorbeeld en sla over
-                    self._printLogregel("[WARN] Item zonder id, sample:", json.dumps(it, ensure_ascii=False)[:200])
-                    continue
-                batch.append((row["id"], row["ehash"], row["phish_prone_percentage"], row["status"]))
-            if batch:
-                self.cursor.executemany(insert_sql, batch)
-                total_inserted += len(batch)
-            page += 1
-            time.sleep(0.2)
-        self.connection.commit()
-        self._printLogregel(f"Inserted users: {total_inserted}")
-        return
-
-    def getRiskScore(self):
-        table = 'user_risk'
-        total_updated = 0
-        # Ophalen alle actieve gebruikers (gekoppeld aan een unit)
-        query = "SELECT id FROM [dbo].[Vw_Active_Users]"
-        self.cursor.execute(query)
-        data = self.cursor.fetchall()
-        for item in data:
-            api_url = f"https://eu.api.knowbe4.com/v1/users/{item[0]}"
-            data = self.fetch_page(self.headers, api_url, 1, 1)
-            row = flatten(data, table)
-            update_sql = (f"UPDATE dbo.Users SET [current_risk_score] = {row["current_risk_score"]} WHERE "
-                          f"[id]={row["id"]}")
-            self.connection.execute(update_sql)
-            total_updated += 1
-            # Ophalen in batches van 10 calls om de API interface niet te overspoelen (error 429)
-            if total_updated % 10 == 0:
-                self.connection.commit()
-                time.sleep(10)
-            else:
-                time.sleep(0.2)
-        self.connection.commit()
-        self._printLogregel(f"Updated users with risk score: {total_updated}")
-        return
-
-    def getCampaigns(self):
-        table = 'phishing_tests'
-        page = 1
-        total_inserted = 0
-        insert_sql = ("INSERT INTO dbo.Phishing_tests (campaign_id, pst_id, status, name, started_at, duration) "
-                      "VALUES (?, ?, ?, ?, ?, ?)")
-        api_url = "https://eu.api.knowbe4.com/v1/phishing/security_tests"
-        while True:
-            data = self.fetch_page(self.headers, api_url, page, self.page_size)
-            # Bepaal items robuust
-            if isinstance(data, list):
-                items = data
-            elif isinstance(data, dict):
-                # Probeer gangbare keys, val terug op de eerste list in de dict
-                items = data.get("data") or data.get("items") or data.get("users") or []
-            else:
-                items = []
-            if not items:
-                break
-            batch = []
-            for it in items:
-                row = flatten(it, table)
-                if row["campaign_id"] is None:
-                    # Log 1x voorbeeld en sla over
-                    self._printLogregel("[WARN] Item zonder id, sample:", json.dumps(it, ensure_ascii=False)[:200])
-                    continue
-                batch.append((row["campaign_id"], row["pst_id"], row["status"], row["name"],
-                              row["started_at"], row["duration"]))
-            if batch:
-                self.cursor.executemany(insert_sql, batch)
-                total_inserted += len(batch)
-            page += 1
-            time.sleep(0.2)
-        self.connection.commit()
-        self._printLogregel(f"Inserted phishing campaigns: {total_inserted}")
-
-    def getTrainingCampaigns(self):
-        table = 'campaigns'
-        page = 1
-        total_inserted = 0
-        insert_sql = ("INSERT INTO dbo.training_campaigns (campaign_id, name, status, start_date) "
-                      "VALUES (?, ?, ?, ?)")
-        api_url = "https://eu.api.knowbe4.com/v1/training/campaigns"
-        while True:
-            data = self.fetch_page(self.headers, api_url, page, self.page_size)
-            # Bepaal items robuust
-            if isinstance(data, list):
-                items = data
-            elif isinstance(data, dict):
-                # Probeer gangbare keys, val terug op de eerste list in de dict
-                items = data.get("data") or data.get("items") or data.get("users") or []
-            else:
-                items = []
-            if not items:
-                break
-            batch = []
-            for it in items:
-                row = flatten(it, table)
-                if row["campaign_id"] is None:
-                    # Log 1x voorbeeld en sla over
-                    self._printLogregel("[WARN] Item zonder id, sample:", json.dumps(it, ensure_ascii=False)[:200])
-                    continue
-                batch.append((row["campaign_id"], row["name"], row["status"], row["start_date"]))
-            if batch:
-                self.cursor.executemany(insert_sql, batch)
-                total_inserted += len(batch)
-            page += 1
-            time.sleep(0.2)
-        self.connection.commit()
-        self._printLogregel(f"Inserted training campaigns: {total_inserted}")
-        return
-
-    def getResponses(self):
-        table = 'phishing_result'
-        total_updated = 0
-        api_calls = 0
-        descriptions = None
-        # Ophalen alle actieve gebruikers
-        query = "SELECT [Id], 0 AS [Phishing_Send], 0 AS [Phishing_Responded] FROM [dbo].[Vw_Active_Users]"
-        self.cursor.execute(query)
-        data = self.cursor.fetchall()
-        self.users = []
-        descriptions = self.cursor.description
-        for record in data:
-            self.users.append(list(record))
-        # Ophalen alle actieve phishing campagnes (In tabel Stam_Phishing_Campaigns: Active=1)
-        query = "SELECT pst_id FROM [dbo].[Vw_Active_Phishing_Campaigns]"
-        self.cursor.execute(query)
-        data = self.cursor.fetchall()
-        for pst_id in data:
-            api_url = f"https://eu.api.knowbe4.com/v1/phishing/security_tests/{pst_id[0]}/recipients"
-            page = 1
-            while True:
-                data = self.fetch_page(self.headers, api_url, page, self.page_size)
-                # Bepaal items robuust
-                if isinstance(data, list):
-                    items = data
-                elif isinstance(data, dict):
-                    # Probeer gangbare keys, val terug op de eerste list in de dict
-                    items = data.get("data") or data.get("items") or data.get("pst_id") or []
-                else:
-                    items = []
-                if not items:
-                    break
-                for it in items:
-                    row = flatten(it, table)
-                    self._update_users(row["user"], row["delivered_at"], row["reported_at"])
-                page += 1
-                api_calls = api_calls + 1
-                if api_calls % 10 == 0:
-                    time.sleep(10)
-                else:
-                    time.sleep(0.2)
-        for user in self.users:
-            if user[1] > 0:
-                percentage = math.ceil((user[2]/user[1]*100)*100)/100
-                query = f"UPDATE [dbo].[users] SET [Percentage_Response] = {percentage} WHERE [id]={user[0]}"
-                self.cursor.execute(query)
-                total_updated += 1
-        self.cursor.commit()
-        self._printLogregel(f"Updated users with response percentage: {total_updated}")
-        return
-
-    def getTrainingCampaignsFollowed(self):
-        table = 'Campagne_result'
-        total_updated = 0
-        api_calls = 0
-        descriptions = None
-        # Ophalen alle actieve gebruikers
-        query = ("SELECT [Id], 0 AS [Campaigns_Enrolled], 0 AS [Campaigns_Finished], 0 AS [Poicies_Enrolled], "
-                 "0 AS [Policies_Finished] FROM [dbo].[Vw_Active_Users]")
-        self.cursor.execute(query)
-        data = self.cursor.fetchall()
-        self.users = []
-        descriptions = self.cursor.description
-        for record in data:
-            self.users.append(list(record))
-        # Ophalen alle actieve phishing campagnes (In tabel Stam_Phishing_Campaigns: Active=1)
-        query = "SELECT campaign_id, [type] FROM [dbo].[Vw_Active_Training_Campaigns]"
-        self.cursor.execute(query)
-        data = self.cursor.fetchall()
-        for campaign in data:
-            trainings_type = campaign[1]
-            api_url = f"https://eu.api.knowbe4.com/v1/training/enrollments?campaign_id={campaign[0]}"
-            page = 1
-            while True:
-                data = self.fetch_page(self.headers, api_url, page, self.page_size)
-                # Bepaal items robuust
-                if isinstance(data, list):
-                    items = data
-                elif isinstance(data, dict):
-                    # Probeer gangbare keys, val terug op de eerste list in de dict
-                    items = data.get("data") or data.get("items") or data.get("pst_id") or []
-                else:
-                    items = []
-                if not items:
-                    break
-                for it in items:
-                    row = flatten(it, table)
-                    if row["user"]:
-                        self._update_users_training(row["user"], row["status"], trainings_type)
-                page += 1
-                api_calls = api_calls + 1
-                if api_calls % 10 == 0:
-                    time.sleep(10)
-                else:
-                    time.sleep(0.2)
-        for user in self.users:
-            if user[1] > 0:
-                percentage_t = math.ceil((user[2]/user[1]*100)*100)/100
-            else:
-                percentage_t = 0
-            if user[3] > 0:
-                percentage_p = math.ceil((user[4] / user[3] * 100) * 100) / 100
-            else:
-                percentage_p = 0
-            query = (f"UPDATE [dbo].[users] SET [Percentage_Viewed] = {percentage_t}, "
-                     f"[percentage_Policies] = {percentage_p} WHERE [id]={user[0]}")
-            self.cursor.execute(query)
-            total_updated += 1
-
-        self.cursor.commit()
-        self._printLogregel(f"Updated all users with training percentage: {total_updated}")
-
-        return
-
-    def emptyTables(self):
-        self.cursor.execute("DELETE FROM dbo.Users")
-        self.cursor.execute("DELETE FROM dbo.Phishing_Tests")
-        self.cursor.execute("DELETE FROM dbo.Training_Campaigns")
-        return
-
-    def connect(self):
-        connection_string = ("DRIVER={ODBC Driver 17 for SQL Server};"
-                             f"SERVER={self.server};"
-                             f"DATABASE={self.database};"
-                             "Trusted_Connection=yes;")
-        self.connection = pyodbc.connect(connection_string)
-        return
-
-    def _update_users(self, usr, send=None, responded=None):
-        usr_id = usr["id"]
-        for user in self.users:
-            if user[0] == usr_id:
-                if send:
-                    user[1] += 1
-                if responded:
-                    user[2] += 1
-        return
-
-    def _update_users_training(self, usr, status, trainings_type):
-        usr_id = usr["id"]
-        for user in self.users:
-            if user[0] == usr_id:
-                if trainings_type == 'T':
-                    user[1] += 1
-                    if status == 'Passed':
-                        user[2] += 1
-                elif trainings_type == 'P':
-                    user[3] += 1
-                    if status == 'Passed':
-                        user[4] += 1
-        return
-
-    def _printLogregel(self, regel):
-        timestamp = datetime.datetime.today().strftime('%Y-%m-%d %H:%M:%S')
-        input_query = f"INSERT INTO [dbo].[LogData]([Timestamp], [Log regel]) VALUES('{timestamp}', '{regel}')"
-        self.cursor.execute(input_query)
-        self.cursor.commit()
-        return
-
-    def fetch_page(self, headers, api_url, page, per_page):
-        resp = requests.get(api_url, headers=headers,
-                            params={"page": page, "per_page": per_page, "status": "active"},
-                            timeout=30, allow_redirects=False)
-        ct = (resp.headers.get("Content-Type") or "").lower()
-        if resp.status_code >= 400:
-            self._printLogregel(f"HTTP {resp.status_code}: {resp.text[:200]}")
-            sys.exit()
-        if "application/json" not in ct:
-            self._printLogregel(f"Geen JSON (Content-Type={ct})  url={resp.url}\nBody:\n{resp.text[:200]}")
-            sys.exit()
-        return resp.json()
-
-
-def to_float_or_none(v):
-    if v is None or v == "":
-        return None
-    try:
-        return float(v)
-    except Exception:
-        return None
-
-
-def flatten(item, table):
-    # Pas dit aan op basis van echte payload keys
-    if table == 'users':                                                            # Gebruikers
-        # https://eu.api.knowbe4.com/v1/users
-        email = item.get("email").lower()
-        return {
-            "id": item.get("id"),
-            "ehash": hashlib.sha256(email.encode("utf-8")).digest(),
-            "phish_prone_percentage": to_float_or_none(item.get("phish_prone_percentage")),
-            "status": item.get("status"),
-            "payload_json": json.dumps(item, ensure_ascii=False)
-        }
-    elif table == 'user_risk':                                                      # Risico score
-        # https://eu.api.knowbe4.com/v1/users/{user_id}
-        return {
-            "id": item.get("id"),
-            "current_risk_score": to_float_or_none(item.get("current_risk_score")),
-            "payload_json": json.dumps(item, ensure_ascii=False)
-        }
-    elif table == 'phishing_tests':                                                 # Campagnes
-        # https: // eu.api.knowbe4.com / v1 / phishing / security_tests
-        return {
-            "campaign_id": item.get("campaign_id"),
-            "pst_id": item.get("pst_id"),
-            "status": item.get("status"),
-            "name": item.get("name"),
-            "started_at": datetime.datetime.strptime(item.get("started_at")[:10], '%Y-%m-%d'),
-            "duration": item.get("duration"),
-            "payload_json": json.dumps(item, ensure_ascii=False)
-        }
-    elif table == 'phishing_result':                                                # Rapporteren
-        # https://eu.api.knowbe4.com/v1/phishing/security_tests/{pst_id}/recipients
-        return {
-            "user": item.get("user"),
-            "delivered_at": item.get("delivered_at"),
-            "reported_at": item.get("reported_at"),
-            "payload_json": json.dumps(item, ensure_ascii=False)
-        }
-    elif table == 'campaigns':                                                      # Campagnes
-        # https://eu.api.knowbe4.com/v1/training/campaigns
-        return {
-            "campaign_id": item.get("campaign_id"),
-            "name": item.get("name"),
-            "status": item.get("status"),
-            "start_date": datetime.datetime.strptime(item.get("start_date")[:10], '%Y-%m-%d'),
-            "payload_json": json.dumps(item, ensure_ascii=False)
-        }
-    elif table == 'Campagne_result':                                                # Bekeken campagnes
-        # https://eu.api.knowbe4.com/v1/training/enrollments campaign_id=[campaign_id]
-        return {
-            "user": item.get("user"),
-            "status": item.get("status"),
-            "payload_json": json.dumps(item, ensure_ascii=False)
-        }
 
 
 if __name__ == '__main__':
+    app = qtw.QApplication(sys.argv)
+
     parser = argparse.ArgumentParser(description="Importeer data naar SQL Server.")
     parser.add_argument("--server", required=False, help="Naam van de SQL Server")
     parser.add_argument("--database", required=False, help="Naam van de database")
-    parser.add_argument("--token", required=False, help="Naam van het API_token")
     args = parser.parse_args()
-    Main(args.server, args.database, args.token)
+
+    settings = {"server": args.server, "database": args.database}
+
+    mw = MainWindow(settings)
+    sys.exit(app.exec_())

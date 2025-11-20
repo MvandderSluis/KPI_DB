@@ -293,8 +293,7 @@ BEGIN
     SET NOCOUNT ON;
 
     ;WITH src AS (
-        SELECT 
-              r.pst_id
+        SELECT r.pst_id
             , r.user_id
             , CASE WHEN r.delivered_at           IS NOT NULL THEN 1 ELSE 0 END AS delivered_count
             , CASE WHEN r.opened_at              IS NOT NULL THEN 1 ELSE 0 END AS opens_count
