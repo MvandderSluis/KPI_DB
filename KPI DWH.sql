@@ -256,6 +256,7 @@ BEGIN
 	CREATE TABLE [STG].[Stg_kb4_Pst_Recipient] (
 		  [pst_id]               BIGINT				NOT NULL,
 		  [user_id]              BIGINT				NOT NULL,
+		  [template_id]			 BIGINT				NOT NULL,
 		  [template]			 VARCHAR(255)		NULL,
 		  [delivered_at]		 DATETIME2			NULL,
 		  [opened_at]			 DATETIME2			NULL,
@@ -371,11 +372,12 @@ BEGIN
 
 	CREATE TABLE DWH.dim_template (
       [template_key]         INT IDENTITY(1,1)	NOT NULL	PRIMARY KEY,
+	  [template_id]			 BIGINT				NOT NULL,
 	  [template_name]        VARCHAR(255)		NOT NULL,
 	  [effective_from]       DATETIME2			NOT NULL,
 	  [effective_to]         DATETIME2			NULL,
 	  [is_current]           BIT		        NOT NULL,
-	  CONSTRAINT UQ_dim_template UNIQUE (template_name, effective_from)
+	  CONSTRAINT UQ_dim_template UNIQUE (template_id, effective_from)
 	);
 	CREATE TABLE DWH.dim_date (
 	  [date_key]             INT				NOT NULL	PRIMARY KEY,    -- yyyymmdd
@@ -530,6 +532,7 @@ BEGIN
 		[Error_Percentage]		INT				NULL,
 		[Finished]				BIT				NOT NULL,
 		CONSTRAINT [PK_MST_Source_status] PRIMARY KEY CLUSTERED (Source)
+	);
 END
 GO
 

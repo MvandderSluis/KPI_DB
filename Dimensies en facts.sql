@@ -194,13 +194,13 @@ BEGIN
 
     DECLARE @LoadTs DATETIME2 = SYSDATETIME();
 
-    ;WITH src AS (SELECT DISTINCT p.template
+    ;WITH src AS (SELECT DISTINCT p.template_id, p.template
 					FROM STG.Stg_kb4_Pst_Recipient p
-					WHERE p.[template] IS NOT NULL)
-    INSERT INTO DWH.dim_template (template_name, effective_from, effective_to, is_current)
-		SELECT s.template, @LoadTs, NULL, 1
+					WHERE p.[template_id] IS NOT NULL)
+    INSERT INTO DWH.dim_template (template_id, template_name, effective_from, effective_to, is_current)
+		SELECT DISTINCT s.template_id, s.template, @LoadTs, NULL, 1
 			FROM src s
-			LEFT JOIN DWH.dim_template d ON d.template_name = s.template AND d.is_current    = 1
+			LEFT JOIN DWH.dim_template d ON d.template_id = s.template_id AND d.is_current = 1
 			WHERE d.template_key IS NULL;
 END;
 GO
@@ -293,59 +293,28 @@ BEGIN
     SET NOCOUNT ON;
 
     ;WITH src AS (
-        SELECT r.pst_id
-            , r.user_id
-            , CASE WHEN r.delivered_at           IS NOT NULL THEN 1 ELSE 0 END AS delivered_count
-            , CASE WHEN r.opened_at              IS NOT NULL THEN 1 ELSE 0 END AS opens_count
-            , CASE WHEN r.clicked_at             IS NOT NULL THEN 1 ELSE 0 END AS clicks_count
-            , CASE WHEN r.replied_at             IS NOT NULL THEN 1 ELSE 0 END AS replies_count
-            , CASE WHEN r.attachment_opened_at   IS NOT NULL THEN 1 ELSE 0 END AS attachments_opened
-            , CASE WHEN r.data_entered_at        IS NOT NULL THEN 1 ELSE 0 END AS data_entered
-            , CASE WHEN r.reported_at            IS NOT NULL THEN 1 ELSE 0 END AS reported_count
-            , r.load_ts                                          AS src_load_ts
-            , p.campaign_id
-            , p.started_at
-            , p.duration_days
-            , p.[name]                                          AS template_name
-        FROM STG.Stg_kb4_Pst_Recipient r
-        JOIN STG.Stg_kb4_Pst p 
-          ON p.pst_id = r.pst_id
-    ),
+        SELECT	r.pst_id, r.[user_id], r.template_id,
+				CASE WHEN r.delivered_at           IS NOT NULL THEN 1 ELSE 0 END AS delivered_count,
+				CASE WHEN r.opened_at              IS NOT NULL THEN 1 ELSE 0 END AS opens_count,
+				CASE WHEN r.clicked_at             IS NOT NULL THEN 1 ELSE 0 END AS clicks_count,
+				CASE WHEN r.replied_at             IS NOT NULL THEN 1 ELSE 0 END AS replies_count,
+				CASE WHEN r.attachment_opened_at   IS NOT NULL THEN 1 ELSE 0 END AS attachments_opened,
+				CASE WHEN r.data_entered_at        IS NOT NULL THEN 1 ELSE 0 END AS data_entered,
+				CASE WHEN r.reported_at            IS NOT NULL THEN 1 ELSE 0 END AS reported_count,
+				r.load_ts  AS src_load_ts, p.campaign_id, p.started_at, p.duration_days, p.[name] AS template_name
+			FROM STG.Stg_kb4_Pst_Recipient r
+			JOIN STG.Stg_kb4_Pst p  ON p.pst_id = r.pst_id),
     src_mapped AS (
-        SELECT
-            du.user_key,
-            dc.campaign_key,
-            dt.template_key,
-            s.pst_id,
-            s.user_id,
-            s.delivered_count,
-            s.opens_count,
-            s.clicks_count,
-            s.replies_count,
-            s.attachments_opened,
-            s.data_entered,
-            s.reported_count,
-            dd.date_key AS started_date_key,
-            CASE WHEN s.duration_days IS NOT NULL THEN s.duration_days * 86400 ELSE NULL END AS duration_seconds,
-            s.src_load_ts
-        FROM src s
-        JOIN DWH.dim_user du
-          ON du.user_id    = s.user_id
-         AND du.is_current = 1
-        JOIN DWH.dim_campaign dc
-          ON dc.campaign_id   = s.campaign_id
-         AND dc.campaign_type = 'phishing'
-         AND dc.is_current    = 1
-        LEFT JOIN DWH.dim_template dt
-          ON dt.template_name = s.template_name
-         AND dt.is_current    = 1
-        LEFT JOIN DWH.dim_date dd
-          ON dd.[date] = CAST(s.started_at AS date)
+        SELECT	du.user_key, dc.campaign_key, dt.template_key,s.pst_id, s.[user_id], s.delivered_count, s.opens_count, s.clicks_count, s.replies_count, s.attachments_opened, s.data_entered, s.reported_count, 
+				dd.date_key AS started_date_key, CASE WHEN s.duration_days IS NOT NULL THEN s.duration_days * 86400 ELSE NULL END AS duration_seconds, s.src_load_ts
+			FROM src s
+			JOIN DWH.dim_user du ON du.[user_id] = s.[user_id] AND du.is_current = 1
+			JOIN DWH.dim_campaign dc ON dc.campaign_id = s.campaign_id AND dc.campaign_type = 'phishing' AND dc.is_current = 1
+			LEFT JOIN DWH.dim_template dt ON dt.template_id = s.template_id AND dt.is_current = 1
+			LEFT JOIN DWH.dim_date dd ON dd.[date] = CAST(s.started_at AS date)
     )
     MERGE DWH.fact_pst_recipient_result AS tgt
-    USING src_mapped AS src
-       ON tgt.pst_id   = src.pst_id
-      AND tgt.user_key = src.user_key
+    USING src_mapped AS src ON tgt.pst_id   = src.pst_id AND tgt.user_key = src.user_key
     WHEN MATCHED THEN
         UPDATE SET
             tgt.campaign_key       = src.campaign_key,
@@ -361,40 +330,10 @@ BEGIN
             tgt.duration_seconds   = src.duration_seconds
             -- LET OP: load_ts níet updaten → eerste loaddatum blijft staan
     WHEN NOT MATCHED BY TARGET THEN
-        INSERT (
-              user_key
-            , campaign_key
-            , template_key
-            , pst_id
-            , result_status
-            , delivered_count
-            , opens_count
-            , clicks_count
-            , replies_count
-            , attachments_opened
-            , data_entered
-            , reported_count
-            , started_date_key
-            , duration_seconds
-            , load_ts
-        )
-        VALUES (
-              src.user_key
-            , src.campaign_key
-            , src.template_key
-            , src.pst_id
-            , NULL
-            , src.delivered_count
-            , src.opens_count
-            , src.clicks_count
-            , src.replies_count
-            , src.attachments_opened
-            , src.data_entered
-            , src.reported_count
-            , src.started_date_key
-            , src.duration_seconds
-            , src.src_load_ts      -- staging-load_ts van eerste keer
-        );
+        INSERT (user_key, campaign_key, template_key, pst_id, result_status, delivered_count, opens_count, clicks_count, replies_count, attachments_opened, data_entered, reported_count, started_date_key, 
+				duration_seconds, load_ts)
+			VALUES (src.user_key, src.campaign_key, src.template_key, src.pst_id, NULL, src.delivered_count, src.opens_count, src.clicks_count, src.replies_count, src.attachments_opened, src.data_entered, 
+					src.reported_count, src.started_date_key, src.duration_seconds, src.src_load_ts);
 END;
 GO
 

@@ -4,7 +4,14 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="83988ac0-4b1e-42c4-b1c1-b258198167a7" name="Changes" comment="Bugfixes ETL and presentation layer" />
+    <list default="true" id="83988ac0-4b1e-42c4-b1c1-b258198167a7" name="Changes" comment="Basic program to manage master tables">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Dimensies en facts.sql" beforeDir="false" afterPath="$PROJECT_DIR$/Dimensies en facts.sql" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Hitas query.sql" beforeDir="false" afterPath="$PROJECT_DIR$/Hitas query.sql" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/KPI DWH.sql" beforeDir="false" afterPath="$PROJECT_DIR$/KPI DWH.sql" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Presentation Layer.sql" beforeDir="false" afterPath="$PROJECT_DIR$/Presentation Layer.sql" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/staging knowbe4.py" beforeDir="false" afterPath="$PROJECT_DIR$/staging knowbe4.py" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -29,20 +36,20 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;Python tests.Doctests in adapters.executor&quot;: &quot;Debug&quot;,
-    &quot;Python tests.Doctests in models.executor&quot;: &quot;Run&quot;,
-    &quot;Python.import data.executor&quot;: &quot;Debug&quot;,
-    &quot;Python.main.executor&quot;: &quot;Debug&quot;,
-    &quot;Python.settings.executor&quot;: &quot;Debug&quot;,
-    &quot;Python.staging knowbe4.executor&quot;: &quot;Run&quot;,
-    &quot;Python.widgets.executor&quot;: &quot;Debug&quot;,
-    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;master&quot;,
-    &quot;last_opened_file_path&quot;: &quot;D:/Ontwikkel/KPI&quot;
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "Python tests.Doctests in adapters.executor": "Debug",
+    "Python tests.Doctests in models.executor": "Run",
+    "Python.import data.executor": "Debug",
+    "Python.main.executor": "Debug",
+    "Python.settings.executor": "Debug",
+    "Python.staging knowbe4.executor": "Debug",
+    "Python.widgets.executor": "Debug",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "git-widget-placeholder": "master",
+    "last_opened_file_path": "D:/Ontwikkel/HIS"
   }
-}</component>
+}]]></component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
       <recent name="D:\Ontwikkel\KPI" />
@@ -51,7 +58,7 @@
       <recent name="D:\Ontwikkel\KPI" />
     </key>
   </component>
-  <component name="RunManager" selected="Python.main">
+  <component name="RunManager" selected="Python.staging knowbe4">
     <configuration name="main" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="KPI" />
       <option name="ENV_FILES" value="" />
@@ -142,10 +149,10 @@
     </configuration>
     <recent_temporary>
       <list>
+        <item itemvalue="Python.staging knowbe4" />
         <item itemvalue="Python.main" />
         <item itemvalue="Python.settings" />
         <item itemvalue="Python.widgets" />
-        <item itemvalue="Python.staging knowbe4" />
       </list>
     </recent_temporary>
   </component>
@@ -229,7 +236,15 @@
       <option name="project" value="LOCAL" />
       <updated>1763550264521</updated>
     </task>
-    <option name="localTasksCounter" value="9" />
+    <task id="LOCAL-00009" summary="Basic program to manage master tables">
+      <option name="closed" value="true" />
+      <created>1763631855651</created>
+      <option name="number" value="00009" />
+      <option name="presentableId" value="LOCAL-00009" />
+      <option name="project" value="LOCAL" />
+      <updated>1763631855651</updated>
+    </task>
+    <option name="localTasksCounter" value="10" />
     <servers />
   </component>
   <component name="VcsManagerConfiguration">
@@ -240,7 +255,8 @@
     <MESSAGE value="Staging software aswell as database setup" />
     <MESSAGE value="Bugfixes and ETL and presentation layer" />
     <MESSAGE value="Bugfixes ETL and presentation layer" />
-    <option name="LAST_COMMIT_MESSAGE" value="Bugfixes ETL and presentation layer" />
+    <MESSAGE value="Basic program to manage master tables" />
+    <option name="LAST_COMMIT_MESSAGE" value="Basic program to manage master tables" />
   </component>
   <component name="XDebuggerManager">
     <watches-manager>

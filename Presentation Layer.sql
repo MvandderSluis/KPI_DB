@@ -18,6 +18,10 @@ IF  EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[KPI].[vw_se
 		DROP VIEW KPI.vw_security_dashboard_day
 IF  EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[KPI].[vw_security_dashboard_month_end]') AND type in (N'V'))
 		DROP VIEW KPI.vw_security_dashboard_month_end
+IF  EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[KPI].[vw_phishing_templates]') AND type in (N'V'))
+		DROP VIEW KPI.vw_phishing_templates
+IF  EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[KPI].[vw_phishing_template_types]') AND type in (N'V'))
+		DROP VIEW KPI.vw_phishing_template_types
 IF EXISTS (SELECT * FROM [KPI database].sys.schemas WHERE name = 'KPI')
 	DROP SCHEMA KPI
 GO
@@ -504,4 +508,52 @@ WITH Ranked AS (
 SELECT [year], [month], [day], avg_phish_prone, avg_risk_score, pct_response_cum, pct_training_completed_cum, pct_policy_read_cum
 	FROM Ranked
 	WHERE rn = 1;
+GO
+
+CREATE OR ALTER VIEW [KPI].[vw_phishing_templates]
+AS
+SELECT r.template AS template_name,
+		SUM(CASE WHEN r.clicked_at           IS NOT NULL THEN 1 ELSE 0 END) AS total_clicked,
+		SUM(CASE WHEN r.replied_at           IS NOT NULL THEN 1 ELSE 0 END) AS total_replied,
+		SUM(CASE WHEN r.attachment_opened_at IS NOT NULL THEN 1 ELSE 0 END) AS total_attachments_opened,
+		SUM(CASE WHEN r.data_entered_at      IS NOT NULL THEN 1 ELSE 0 END) AS total_data_entered,
+		-- totaal van de 4
+		SUM(
+			(CASE WHEN r.clicked_at           IS NOT NULL THEN 1 ELSE 0 END) +
+			(CASE WHEN r.replied_at           IS NOT NULL THEN 1 ELSE 0 END) +
+			(CASE WHEN r.attachment_opened_at IS NOT NULL THEN 1 ELSE 0 END) +
+			(CASE WHEN r.data_entered_at      IS NOT NULL THEN 1 ELSE 0 END)
+		) AS total_all
+	FROM STG.Stg_kb4_Pst_Recipient r
+WHERE r.template_id IS NOT NULL
+GROUP BY r.template
+HAVING
+    SUM(
+        (CASE WHEN r.clicked_at           IS NOT NULL THEN 1 ELSE 0 END) +
+        (CASE WHEN r.replied_at           IS NOT NULL THEN 1 ELSE 0 END) +
+        (CASE WHEN r.attachment_opened_at IS NOT NULL THEN 1 ELSE 0 END) +
+        (CASE WHEN r.data_entered_at      IS NOT NULL THEN 1 ELSE 0 END)
+    ) > 0
+GO
+
+CREATE OR ALTER VIEW [KPI].[vw_phishing_template_types]
+AS
+	 WITH src AS (
+		SELECT template_name, total_all
+			FROM kpi.vw_phishing_templates
+			WHERE template_name IS NOT NULL AND total_all > 0),
+		xml_src AS (
+			SELECT template_name, total_all,
+				TRY_CAST('<root>' +	REPLACE(REPLACE(REPLACE(template_name, '&', '&amp;'), '(', '<t>'),')', '</t>') +'</root>' AS XML) AS x
+			FROM src),
+		types AS (
+			SELECT LTRIM(RTRIM(n.value('.', 'nvarchar(200)'))) AS template_type, total_all
+				FROM xml_src
+				CROSS APPLY x.nodes('/root/t') AS ca(n)
+				WHERE LTRIM(RTRIM(n.value('.', 'nvarchar(200)'))) <> '')
+		SELECT
+			template_type, COUNT(*) AS occurrences, SUM(total_all) AS total_reactions
+			FROM types
+			GROUP BY template_type
+			HAVING SUM(total_all) > 0   -- extra safety; eigenlijk al gefilterd in src
 GO

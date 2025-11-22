@@ -27,8 +27,8 @@ class Main:
         self.users = list()
         self.phishing_campaigns = list()
         self.training_campaigns = list()
-        self._getUsers()                    # Import users
-        self._getUserDetails()              # Import riskscore
+        #self._getUsers()                    # Import users
+        #self._getUserDetails()              # Import riskscore
         self._getPhishingCampaigns()        # Import phishing campaigns
         self._getPhishingRecipients()       # Import phing action by user
         self._getTrainingCampaigns()        # Import training campaigns
@@ -159,9 +159,9 @@ class Main:
     def _getPhishingRecipients(self):
         self.table = 'phishing_recipients'
         total_inserted = 0
-        insert_sql = (f"INSERT INTO stg.Stg_kb4_Pst_Recipient(pst_id, [user_id], template, delivered_at, "
+        insert_sql = (f"INSERT INTO stg.Stg_kb4_Pst_Recipient(pst_id, [user_id], template_id, template, delivered_at, "
                       f"opened_at, clicked_at, replied_at, attachment_opened_at, macro_enabled_at, data_entered_at, "
-                      f"qr_code_scanned_at, reported_at, hash_row) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
+                      f"qr_code_scanned_at, reported_at, hash_row) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
         batch = list()
         self.page = 1
         self.page_size = 500
@@ -178,10 +178,10 @@ class Main:
                     break
                 for it in items:
                     row = self._flatten(it)
-                    batch.append((row["pst_id"], row["user_id"], row["template"], row["delivered_at"],
-                                  row["opened_at"], row["clicked_at"], row["replied_at"], row["attachment_opened_at"],
-                                  row["macro_enabled_at"], row["data_entered_at"], row["qr_code_scanned"],
-                                  row["reported_at"], row["hash_row"]))
+                    batch.append((row["pst_id"], row["user_id"], row["template_id"], row["template"],
+                                  row["delivered_at"], row["opened_at"], row["clicked_at"], row["replied_at"],
+                                  row["attachment_opened_at"], row["macro_enabled_at"], row["data_entered_at"],
+                                  row["qr_code_scanned"], row["reported_at"], row["hash_row"]))
                 time.sleep(self.sleep_interval_medium)
                 self.page += 1
         if batch:
@@ -290,6 +290,7 @@ class Main:
             user = item.get("user")
             user_id = user.get("id")
             template = item.get("template")
+            template_id = template.get("id")
             template_name = template.get("name")
             delivered_at = to_date_or_none(item.get("delivered_at"))
             opened_at = to_date_or_none(item.get("opened_at"))
@@ -304,11 +305,11 @@ class Main:
                      str(clicked_at) + str(replied_at) + str(attachment_opened_at) + str(macro_enabled_at) +
                      str(data_entered_at) + str(qr_code_scanned) + str(reported_at))
             hashrow = hashlib.sha256(total.encode("utf-8")).digest()
-            return {"pst_id": pst_id, "user_id": user_id, "template": template_name, "delivered_at": delivered_at,
-                    "opened_at": opened_at, "clicked_at": clicked_at, "replied_at": replied_at,
-                    "attachment_opened_at": attachment_opened_at, "macro_enabled_at": macro_enabled_at,
-                    "data_entered_at": data_entered_at, "qr_code_scanned": qr_code_scanned,
-                    "reported_at": reported_at, "hash_row": hashrow}
+            return {"pst_id": pst_id, "user_id": user_id, "template_id": template_id, "template": template_name,
+                    "delivered_at": delivered_at, "opened_at": opened_at, "clicked_at": clicked_at,
+                    "replied_at": replied_at, "attachment_opened_at": attachment_opened_at,
+                    "macro_enabled_at": macro_enabled_at, "data_entered_at": data_entered_at,
+                    "qr_code_scanned": qr_code_scanned, "reported_at": reported_at, "hash_row": hashrow}
         elif self.table == "training_campaigns":
             campaign_id = item.get('campaign_id')
             name = item.get("name")
@@ -330,8 +331,8 @@ class Main:
                     "status": status, "hash_row": hashrow}
 
     def _deleteStaging(self):
-        self.cursor.execute("DELETE FROM [STG].[Stg_kb4_Users]")
-        self.cursor.execute("DELETE FROM [STG].[Stg_kb4_User_Detail]")
+        #self.cursor.execute("DELETE FROM [STG].[Stg_kb4_Users]")
+        #self.cursor.execute("DELETE FROM [STG].[Stg_kb4_User_Detail]")
         self.cursor.execute("DELETE FROM [STG].[Stg_kb4_Pst]")
         self.cursor.execute("DELETE FROM [STG].[Stg_kb4_Pst_Recipient]")
         self.cursor.execute("DELETE FROM [STG].[Stg_kb4_Training_Campaign]")
