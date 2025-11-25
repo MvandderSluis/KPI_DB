@@ -20,15 +20,15 @@ class Main:
         self._getToken()
         self.total_fetches = 0
         self.sleep_interval_short = 0.2
-        self.sleep_interval_medium = 1
+        self.sleep_interval_medium = 5
         self.sleep_interval_long = 10
         self.batch_size = 10
         self._deleteStaging()
         self.users = list()
         self.phishing_campaigns = list()
         self.training_campaigns = list()
-        #self._getUsers()                    # Import users
-        #self._getUserDetails()              # Import riskscore
+        self._getUsers()                    # Import users
+        self._getUserDetails()              # Import riskscore
         self._getPhishingCampaigns()        # Import phishing campaigns
         self._getPhishingRecipients()       # Import phing action by user
         self._getTrainingCampaigns()        # Import training campaigns
@@ -331,8 +331,8 @@ class Main:
                     "status": status, "hash_row": hashrow}
 
     def _deleteStaging(self):
-        #self.cursor.execute("DELETE FROM [STG].[Stg_kb4_Users]")
-        #self.cursor.execute("DELETE FROM [STG].[Stg_kb4_User_Detail]")
+        self.cursor.execute("DELETE FROM [STG].[Stg_kb4_Users]")
+        self.cursor.execute("DELETE FROM [STG].[Stg_kb4_User_Detail]")
         self.cursor.execute("DELETE FROM [STG].[Stg_kb4_Pst]")
         self.cursor.execute("DELETE FROM [STG].[Stg_kb4_Pst_Recipient]")
         self.cursor.execute("DELETE FROM [STG].[Stg_kb4_Training_Campaign]")

@@ -64,7 +64,7 @@ class SqlTableEditor(qtw.QWidget):
     def load_data(self):
         self.table.setRowCount(0)
         try:
-            sql = f"SELECT {', '.join(self.columns)} FROM {self.table_name}  ORDER BY {self.order_by}"
+            sql = f"SELECT {', '.join(self.columns)} FROM {self.table_name}  ORDER BY {', '.join(self.order_by)}"
             self.cursor.execute(sql)
             rows = self.cursor.fetchall()
 
@@ -156,6 +156,9 @@ class MainWindow(qtw.QMainWindow):
         menubar = self.menuBar()
         log_menu = menubar.addMenu('Logbestanden')
         table_menu = menubar.addMenu('Tabelonderhoud')
+        view_menu = menubar.addMenu('Views')
+        sub_org = view_menu.addMenu('Op bedrijf')
+        sub_unit = view_menu.addMenu('Op unit')
 
         # Acties
         action_units = table_menu.addAction('Units')
@@ -164,6 +167,14 @@ class MainWindow(qtw.QMainWindow):
         action_training = table_menu.addAction("Training")
         action_etl_log = log_menu.addAction('ETL logging')
         action_etl_status = log_menu.addAction('ETL status')
+        action_vw_phish_templates = view_menu.addAction('Phishing templates')
+        action_vw_phish_types = view_menu.addAction('Phishing types')
+        action_vw_security_day = sub_org.addAction('Overall Dayly')
+        action_vw_security_week = sub_org.addAction('Overall Weekly')
+        action_vw_security_month = sub_org.addAction('Overall Monthly')
+        action_vw_unit_day = sub_unit.addAction('Per unit dayly')
+        action_vw_unit_week = sub_unit.addAction('Per unit weekly')
+        action_vw_unit_month = sub_unit.addAction('Per unit monthly')
         # triggers
         action_targets.triggered.connect(lambda: self._open_table('targets'))
         action_units.triggered.connect(lambda: self._open_table('units'))
@@ -171,7 +182,14 @@ class MainWindow(qtw.QMainWindow):
         action_training.triggered.connect(lambda: self._open_table('training'))
         action_etl_log.triggered.connect(lambda: self._open_table('etl_log'))
         action_etl_status.triggered.connect(lambda: self._open_table('etl_status'))
-
+        action_vw_phish_templates.triggered.connect(lambda: self._open_table('phish_templates'))
+        action_vw_phish_types.triggered.connect(lambda: self._open_table('phish_types'))
+        action_vw_security_day.triggered.connect(lambda: self._open_table('sec_day'))
+        action_vw_security_week.triggered.connect(lambda: self._open_table('sec_week'))
+        action_vw_security_month.triggered.connect(lambda: self._open_table('sec_month'))
+        action_vw_unit_day.triggered.connect(lambda: self._open_table('unit_day'))
+        action_vw_unit_week.triggered.connect(lambda: self._open_table('unit_week'))
+        action_vw_unit_month.triggered.connect(lambda: self._open_table('unit_month'))
         # Centrale widget: tabbladen voor meerdere tabellen
         self.tabs = qtw.QTabWidget()
         self.setCentralWidget(self.tabs)
@@ -188,25 +206,71 @@ class MainWindow(qtw.QMainWindow):
         # Nieuw tabblad aanmaken
         if tab_name == 'units':
             editor = SqlTableEditor(connection=self.connection, table_name="MST.MST_Units",
-                                    columns=["Unit", "[Unit name]"], order_by="Unit", read_only=False)
+                                    columns=["Unit", "[Unit name]"], order_by=["Unit"], read_only=False)
         elif tab_name == 'targets':
             editor = SqlTableEditor(connection=self.connection, table_name="MST.MST_Targets",
-                                    columns=["KPI", "Target", "Active", "Active_From", "Active_To"], order_by="KPI",
+                                    columns=["KPI", "Target", "Active", "Active_From", "Active_To"], order_by=["KPI"],
                                     read_only=False,)
         elif tab_name == 'phishing':
             editor = SqlTableEditor(connection=self.connection, table_name='MST.MST_Phishing_Campaigns',
-                                    columns=["Campaign_id", "Name", "Active"], order_by="Name")
+                                    columns=["Campaign_id", "Name", "Active"], order_by=["Name"])
         elif tab_name == 'training':
             editor = SqlTableEditor(connection=self.connection, table_name='MST.MST_Training_Campaigns',
-                                    columns=["Name", "Active", "Type"], order_by="Name", read_only=False)
+                                    columns=["Name", "Active", "Type"], order_by=["Name"], read_only=False)
         elif tab_name == 'etl_log':
             editor = SqlTableEditor(connection=self.connection, table_name='MST.Logdata',
                                     columns=['Timestamp', 'Source', 'Severity', '[Log regel]'],
-                                    order_by='Timestamp DESC', read_only=True)
+                                    order_by=['Timestamp DESC'], read_only=True)
         elif tab_name == 'etl_status':
             editor = SqlTableEditor(connection=self.connection, table_name='MST.Source_status',
                                     columns=["Source", "Run_date", "Max_fetches", "Fetched_today", "Finished"],
-                                    order_by="Source", read_only=True)
+                                    order_by=["Source"], read_only=True)
+        elif tab_name == 'phish_templates':
+            editor = SqlTableEditor(connection=self.connection, table_name='KPI.vw_phishing_templates',
+                                    columns=["Template_name", "Total_clicked", "Total_replied",
+                                             "Total_attachments_opened", "Total_data_entered", "Total_all"],
+                                    order_by=["Total_all DESC"], read_only=True)
+        elif tab_name == 'phish_types':
+            editor = SqlTableEditor(connection=self.connection, table_name='KPI.vw_phishing_template_types',
+                                    columns=["Template_type", "Occurrences", "Total_reactions"],
+                                    order_by=["Total_reactions DESC"], read_only=True)
+        elif tab_name == 'sec_day':
+            editor = SqlTableEditor(connection=self.connection, table_name='KPI.vw_security_dashboard_day',
+                                    columns=["Year", "Month", "Day", "Avg_phish_prone",
+                                             "Avg_risk_score", "Pct_response_cum", "pct_training_completed_cum",
+                                             "Pct_policy_read_cum"],
+                                    order_by=["Year", "Month", "Day"], read_only=True)
+        elif tab_name == 'sec_week':
+            editor = SqlTableEditor(connection=self.connection, table_name='KPI.vw_security_dashboard_week',
+                                    columns=["Year", "Week", "Avg_phish_prone",
+                                             "Avg_risk_score", "Pct_response_cum", "pct_training_completed_cum",
+                                             "Pct_policy_read_cum"],
+                                    order_by=["Year", "week"], read_only=True)
+        elif tab_name == 'sec_month':
+            editor = SqlTableEditor(connection=self.connection, table_name='KPI.vw_security_dashboard_month',
+                                    columns=["Year", "Month", "Avg_phish_prone",
+                                             "Avg_risk_score", "Pct_response_cum", "pct_training_completed_cum",
+                                             "Pct_policy_read_cum"],
+                                    order_by=["Year", "Month"], read_only=True)
+        elif tab_name == 'unit_day':
+            editor = SqlTableEditor(connection=self.connection, table_name='KPI.vw_unit_security_dashboard_day',
+                                    columns=["Unit_naam", "Year", "Month", "Day", "Avg_phish_prone",
+                                             "Avg_risk_score", "Pct_response_cum", "pct_training_completed_cum",
+                                             "Pct_policy_read_cum"],
+                                    order_by=["Unit_naam", "Year", "Month", "Day"], read_only=True)
+        elif tab_name == 'unit_week':
+            editor = SqlTableEditor(connection=self.connection, table_name='KPI.vw_unit_security_dashboard_week',
+                                    columns=["Unit_naam", "Year", "Week", "Avg_phish_prone",
+                                             "Avg_risk_score", "Pct_response_cum", "pct_training_completed_cum",
+                                             "Pct_policy_read_cum"],
+                                    order_by=["Year", "week"], read_only=True)
+        elif tab_name == 'unit_month':
+            editor = SqlTableEditor(connection=self.connection, table_name='KPI.vw_unit_security_dashboard_month',
+                                    columns=["Unit_naam", "Year", "Month", "Avg_phish_prone",
+                                             "Avg_risk_score", "Pct_response_cum", "pct_training_completed_cum",
+                                             "Pct_policy_read_cum"],
+                                    order_by=["Year", "Month"], read_only=True)
+
         self.tabs.addTab(editor, tab_name)
         self.tabs.setCurrentIndex(self.tabs.count() - 1)
 
