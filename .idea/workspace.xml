@@ -4,10 +4,9 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="83988ac0-4b1e-42c4-b1c1-b258198167a7" name="Changes" comment="Campaign_id added">
+    <list default="true" id="83988ac0-4b1e-42c4-b1c1-b258198167a7" name="Changes" comment="Bugs removed">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/main.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/staging knowbe4.py" beforeDir="false" afterPath="$PROJECT_DIR$/staging knowbe4.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Presentation Layer.sql" beforeDir="false" afterPath="$PROJECT_DIR$/Presentation Layer.sql" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -55,7 +54,7 @@
       <recent name="D:\Ontwikkel\KPI" />
     </key>
   </component>
-  <component name="RunManager" selected="Python.main">
+  <component name="RunManager" selected="Python.staging knowbe4">
     <configuration name="main" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="KPI" />
       <option name="ENV_FILES" value="" />
@@ -146,8 +145,8 @@
     </configuration>
     <recent_temporary>
       <list>
-        <item itemvalue="Python.main" />
         <item itemvalue="Python.staging knowbe4" />
+        <item itemvalue="Python.main" />
         <item itemvalue="Python.settings" />
         <item itemvalue="Python.widgets" />
       </list>
@@ -249,7 +248,15 @@
       <option name="project" value="LOCAL" />
       <updated>1763803951636</updated>
     </task>
-    <option name="localTasksCounter" value="11" />
+    <task id="LOCAL-00011" summary="Bugs removed">
+      <option name="closed" value="true" />
+      <created>1764074907670</created>
+      <option name="number" value="00011" />
+      <option name="presentableId" value="LOCAL-00011" />
+      <option name="project" value="LOCAL" />
+      <updated>1764074907670</updated>
+    </task>
+    <option name="localTasksCounter" value="12" />
     <servers />
   </component>
   <component name="VcsManagerConfiguration">
@@ -262,7 +269,8 @@
     <MESSAGE value="Bugfixes ETL and presentation layer" />
     <MESSAGE value="Basic program to manage master tables" />
     <MESSAGE value="Campaign_id added" />
-    <option name="LAST_COMMIT_MESSAGE" value="Campaign_id added" />
+    <MESSAGE value="Bugs removed" />
+    <option name="LAST_COMMIT_MESSAGE" value="Bugs removed" />
   </component>
   <component name="XDebuggerManager">
     <watches-manager>

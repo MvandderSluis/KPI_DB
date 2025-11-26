@@ -512,27 +512,28 @@ GO
 
 CREATE OR ALTER VIEW [KPI].[vw_phishing_templates]
 AS
-SELECT r.template AS template_name,
-		SUM(CASE WHEN r.clicked_at           IS NOT NULL THEN 1 ELSE 0 END) AS total_clicked,
-		SUM(CASE WHEN r.replied_at           IS NOT NULL THEN 1 ELSE 0 END) AS total_replied,
-		SUM(CASE WHEN r.attachment_opened_at IS NOT NULL THEN 1 ELSE 0 END) AS total_attachments_opened,
-		SUM(CASE WHEN r.data_entered_at      IS NOT NULL THEN 1 ELSE 0 END) AS total_data_entered,
+SELECT DISTINCT t.template_name AS template_name,
+		SUM(CASE WHEN r.clicks_count			IS NOT NULL THEN 1 ELSE 0 END) AS total_clicked,
+		SUM(CASE WHEN r.replies_count           IS NOT NULL THEN 1 ELSE 0 END) AS total_replied,
+		SUM(CASE WHEN r.attachments_opened		IS NOT NULL THEN 1 ELSE 0 END) AS total_attachments_opened,
+		SUM(CASE WHEN r.data_entered			IS NOT NULL THEN 1 ELSE 0 END) AS total_data_entered,
 		-- totaal van de 4
 		SUM(
-			(CASE WHEN r.clicked_at           IS NOT NULL THEN 1 ELSE 0 END) +
-			(CASE WHEN r.replied_at           IS NOT NULL THEN 1 ELSE 0 END) +
-			(CASE WHEN r.attachment_opened_at IS NOT NULL THEN 1 ELSE 0 END) +
-			(CASE WHEN r.data_entered_at      IS NOT NULL THEN 1 ELSE 0 END)
+			(CASE WHEN r.clicks_count           IS NOT NULL THEN 1 ELSE 0 END) +
+			(CASE WHEN r.replies_count          IS NOT NULL THEN 1 ELSE 0 END) +
+			(CASE WHEN r.attachments_opened		IS NOT NULL THEN 1 ELSE 0 END) +
+			(CASE WHEN r.data_entered			IS NOT NULL THEN 1 ELSE 0 END)
 		) AS total_all
-	FROM STG.Stg_kb4_Pst_Recipient r
-WHERE r.template_id IS NOT NULL
-GROUP BY r.template
+	FROM DWH.fact_pst_recipient_result r
+	JOIN DWH.dim_template AS T ON T.template_key = R.template_key
+WHERE t.template_id IS NOT NULL
+GROUP BY t.template_name, r.pst_id
 HAVING
     SUM(
-        (CASE WHEN r.clicked_at           IS NOT NULL THEN 1 ELSE 0 END) +
-        (CASE WHEN r.replied_at           IS NOT NULL THEN 1 ELSE 0 END) +
-        (CASE WHEN r.attachment_opened_at IS NOT NULL THEN 1 ELSE 0 END) +
-        (CASE WHEN r.data_entered_at      IS NOT NULL THEN 1 ELSE 0 END)
+        (CASE WHEN r.clicks_count				IS NOT NULL THEN 1 ELSE 0 END) +
+        (CASE WHEN r.replies_count				IS NOT NULL THEN 1 ELSE 0 END) +
+        (CASE WHEN r.attachments_opened			IS NOT NULL THEN 1 ELSE 0 END) +
+        (CASE WHEN r.data_entered				IS NOT NULL THEN 1 ELSE 0 END)
     ) > 0
 GO
 
