@@ -5,6 +5,7 @@ import argparse
 import requests
 import hashlib
 import logging
+import uuid
 from datetime import date, datetime, timedelta
 from dateutil.relativedelta import relativedelta
 
@@ -91,6 +92,7 @@ class Main:
             time.sleep(self.sleep_interval_short)
         self.connection.commit()
         self._printLogregel(f"Inserted users: {total_inserted}", "INFO")
+        logging.info("Inserted users")
         time.sleep(self.sleep_interval_long)
         return
 
@@ -119,6 +121,7 @@ class Main:
             total_inserted = len(batch)
             self.connection.commit()
         self._printLogregel(f"Inserted users with risk score: {total_inserted}", "INFO")
+        logging.info("Inserted users with risk score")
         return
 
     def _getPhishingCampaigns(self):
@@ -154,6 +157,7 @@ class Main:
             time.sleep(self.sleep_interval_short)
         self.connection.commit()
         self._printLogregel(f"Inserted phishing campaigns: {total_inserted}", "INFO")
+        logging.info("Inserted phishing campaigns")
         time.sleep(self.sleep_interval_long)
         return
 
@@ -190,6 +194,7 @@ class Main:
             total_inserted = len(batch)
             self.connection.commit()
         self._printLogregel(f"Inserted users for phishing campaigns: {total_inserted}", "INFO")
+        logging.info("Inserted users for phishing campaigns")
         return
 
     def _getTrainingCampaigns(self):
@@ -225,6 +230,7 @@ class Main:
             time.sleep(self.sleep_interval_short)
         self.connection.commit()
         self._printLogregel(f"Inserted training campaigns: {total_inserted}", "INFO")
+        logging.info("Inserted training campaigns")
         time.sleep(self.sleep_interval_long)
         return
 
@@ -258,6 +264,7 @@ class Main:
             total_inserted = len(batch)
             self.connection.commit()
         self._printLogregel(f"Inserted users for training campaigns: {total_inserted}", "INFO")
+        logging.info("Inserted users for training campaigns")
         return
 
     def _flatten(self, item):

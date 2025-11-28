@@ -4,7 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="83988ac0-4b1e-42c4-b1c1-b258198167a7" name="Changes" comment="View templates updated">
+    <list default="true" id="83988ac0-4b1e-42c4-b1c1-b258198167a7" name="Changes" comment="Logging on file build in">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/staging knowbe4.py" beforeDir="false" afterPath="$PROJECT_DIR$/staging knowbe4.py" afterDir="false" />
     </list>
@@ -34,6 +34,7 @@
   </component>
   <component name="PropertiesComponent"><![CDATA[{
   "keyToString": {
+    "ASKED_ADD_EXTERNAL_FILES": "true",
     "Python tests.Doctests in adapters.executor": "Debug",
     "Python tests.Doctests in models.executor": "Run",
     "Python.import data.executor": "Debug",
@@ -264,7 +265,15 @@
       <option name="project" value="LOCAL" />
       <updated>1764144227213</updated>
     </task>
-    <option name="localTasksCounter" value="13" />
+    <task id="LOCAL-00013" summary="Logging on file build in">
+      <option name="closed" value="true" />
+      <created>1764336206747</created>
+      <option name="number" value="00013" />
+      <option name="presentableId" value="LOCAL-00013" />
+      <option name="project" value="LOCAL" />
+      <updated>1764336206747</updated>
+    </task>
+    <option name="localTasksCounter" value="14" />
     <servers />
   </component>
   <component name="VcsManagerConfiguration">
@@ -279,7 +288,8 @@
     <MESSAGE value="Campaign_id added" />
     <MESSAGE value="Bugs removed" />
     <MESSAGE value="View templates updated" />
-    <option name="LAST_COMMIT_MESSAGE" value="View templates updated" />
+    <MESSAGE value="Logging on file build in" />
+    <option name="LAST_COMMIT_MESSAGE" value="Logging on file build in" />
   </component>
   <component name="XDebuggerManager">
     <watches-manager>
