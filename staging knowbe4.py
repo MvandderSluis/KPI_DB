@@ -4,6 +4,7 @@ import pyodbc
 import argparse
 import requests
 import hashlib
+import logging
 from datetime import date, datetime, timedelta
 from dateutil.relativedelta import relativedelta
 
@@ -410,9 +411,32 @@ def to_date_or_none(v):
 
 
 if __name__ == '__main__':
+    # Logging zo vroeg mogelijk instellen
+    logger = logging.getLogger()
+    logger.setLevel(logging.INFO)
+
+    # File handler
+    fh = logging.FileHandler("knowbe4_app.log", encoding="utf-8")
+    fh.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s"))
+
+    # Console handler
+    ch = logging.StreamHandler()
+    ch.setFormatter(logging.Formatter("%(levelname)s: %(message)s"))
+
+    logger.addHandler(fh)
+    logger.addHandler(ch)
+
     parser = argparse.ArgumentParser(description="Importeer data naar SQL Server.")
     parser.add_argument("--server", required=False, help="Naam van de SQL Server")
     parser.add_argument("--database", required=False, help="Naam van de database")
     parser.add_argument("--token", required=False, help="Naam van het API_token")
     args = parser.parse_args()
-    Main(args.server, args.database, args.token)
+
+    try:
+        logging.info("Start KnowBe4 import")
+        Main(args.server, args.database, args.token)
+        logging.info("KnowBe4 import succesvol afgerond")
+    except Exception:
+        # Hier komen alle ongecatchte fouten terecht
+        logging.exception("Ongecatchte fout in KnowBe4-staging proces")
+        raise

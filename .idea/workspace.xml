@@ -4,9 +4,9 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="83988ac0-4b1e-42c4-b1c1-b258198167a7" name="Changes" comment="Bugs removed">
+    <list default="true" id="83988ac0-4b1e-42c4-b1c1-b258198167a7" name="Changes" comment="View templates updated">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Presentation Layer.sql" beforeDir="false" afterPath="$PROJECT_DIR$/Presentation Layer.sql" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/staging knowbe4.py" beforeDir="false" afterPath="$PROJECT_DIR$/staging knowbe4.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -32,20 +32,20 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;Python tests.Doctests in adapters.executor&quot;: &quot;Debug&quot;,
-    &quot;Python tests.Doctests in models.executor&quot;: &quot;Run&quot;,
-    &quot;Python.import data.executor&quot;: &quot;Debug&quot;,
-    &quot;Python.main.executor&quot;: &quot;Debug&quot;,
-    &quot;Python.settings.executor&quot;: &quot;Debug&quot;,
-    &quot;Python.staging knowbe4.executor&quot;: &quot;Debug&quot;,
-    &quot;Python.widgets.executor&quot;: &quot;Debug&quot;,
-    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;master&quot;,
-    &quot;last_opened_file_path&quot;: &quot;D:/Ontwikkel/HIS&quot;
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "Python tests.Doctests in adapters.executor": "Debug",
+    "Python tests.Doctests in models.executor": "Run",
+    "Python.import data.executor": "Debug",
+    "Python.main.executor": "Debug",
+    "Python.settings.executor": "Debug",
+    "Python.staging knowbe4.executor": "Debug",
+    "Python.widgets.executor": "Debug",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "git-widget-placeholder": "master",
+    "last_opened_file_path": "D:/Ontwikkel/HIS"
   }
-}</component>
+}]]></component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
       <recent name="D:\Ontwikkel\KPI" />
@@ -256,7 +256,15 @@
       <option name="project" value="LOCAL" />
       <updated>1764074907670</updated>
     </task>
-    <option name="localTasksCounter" value="12" />
+    <task id="LOCAL-00012" summary="View templates updated">
+      <option name="closed" value="true" />
+      <created>1764144227213</created>
+      <option name="number" value="00012" />
+      <option name="presentableId" value="LOCAL-00012" />
+      <option name="project" value="LOCAL" />
+      <updated>1764144227213</updated>
+    </task>
+    <option name="localTasksCounter" value="13" />
     <servers />
   </component>
   <component name="VcsManagerConfiguration">
@@ -270,7 +278,8 @@
     <MESSAGE value="Basic program to manage master tables" />
     <MESSAGE value="Campaign_id added" />
     <MESSAGE value="Bugs removed" />
-    <option name="LAST_COMMIT_MESSAGE" value="Bugs removed" />
+    <MESSAGE value="View templates updated" />
+    <option name="LAST_COMMIT_MESSAGE" value="View templates updated" />
   </component>
   <component name="XDebuggerManager">
     <watches-manager>
