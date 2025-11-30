@@ -421,6 +421,8 @@ BEGIN
 	  [replies_count]        INT			NULL,
 	  [attachments_opened]   INT			NULL,
 	  [data_entered]         INT			NULL,
+	  [macro_enabled]		 INT			NULL,
+	  [qr_code_scanned]		 INT			NULL,
 	  [reported_count]		 INT			NULL,
 	  [started_date_key]     INT			NULL,       -- uit stg_kb4_pst.started_at
 	  [duration_seconds]     INT			NULL,

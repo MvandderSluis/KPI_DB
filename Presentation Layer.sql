@@ -22,6 +22,8 @@ IF  EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[KPI].[vw_ph
 		DROP VIEW KPI.vw_phishing_templates
 IF  EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[KPI].[vw_phishing_template_types]') AND type in (N'V'))
 		DROP VIEW KPI.vw_phishing_template_types
+IF  EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[KPI].[vw_phishing_error_type]') AND type in (N'V'))
+		DROP VIEW KPI.vw_phishing_error_type
 IF EXISTS (SELECT * FROM [KPI database].sys.schemas WHERE name = 'KPI')
 	DROP SCHEMA KPI
 GO
@@ -512,29 +514,18 @@ GO
 
 CREATE OR ALTER VIEW [KPI].[vw_phishing_templates]
 AS
-SELECT DISTINCT t.template_name AS template_name,
-		SUM(CASE WHEN r.clicks_count			IS NOT NULL THEN 1 ELSE 0 END) AS total_clicked,
-		SUM(CASE WHEN r.replies_count           IS NOT NULL THEN 1 ELSE 0 END) AS total_replied,
-		SUM(CASE WHEN r.attachments_opened		IS NOT NULL THEN 1 ELSE 0 END) AS total_attachments_opened,
-		SUM(CASE WHEN r.data_entered			IS NOT NULL THEN 1 ELSE 0 END) AS total_data_entered,
-		-- totaal van de 4
-		SUM(
-			(CASE WHEN r.clicks_count           IS NOT NULL THEN 1 ELSE 0 END) +
-			(CASE WHEN r.replies_count          IS NOT NULL THEN 1 ELSE 0 END) +
-			(CASE WHEN r.attachments_opened		IS NOT NULL THEN 1 ELSE 0 END) +
-			(CASE WHEN r.data_entered			IS NOT NULL THEN 1 ELSE 0 END)
-		) AS total_all
-	FROM DWH.fact_pst_recipient_result r
-	JOIN DWH.dim_template AS T ON T.template_key = R.template_key
-WHERE t.template_id IS NOT NULL
-GROUP BY t.template_name, r.pst_id
-HAVING
-    SUM(
-        (CASE WHEN r.clicks_count				IS NOT NULL THEN 1 ELSE 0 END) +
-        (CASE WHEN r.replies_count				IS NOT NULL THEN 1 ELSE 0 END) +
-        (CASE WHEN r.attachments_opened			IS NOT NULL THEN 1 ELSE 0 END) +
-        (CASE WHEN r.data_entered				IS NOT NULL THEN 1 ELSE 0 END)
-    ) > 0
+SELECT  T.template_name, 
+		SUM(ISNULL(clicks_count,0)) AS total_clicked, 
+		SUM(ISNULL(replies_count,0)) AS total_replied, 
+		SUM(ISNULL(attachments_opened,0)) AS total_attachments_opened, 
+		SUM(ISNULL(data_entered,0)) AS total_data_entered,
+		SUM(ISNULL(macro_enabled,0)) AS total_macro_enabled,
+		SUM(ISNULL(qr_code_scanned,0)) AS total_qr_code_scanned,
+		SUM(ISNULL(clicks_count,0)) + SUM(ISNULL(replies_count,0)) + SUM(ISNULL(attachments_opened,0)) + SUM(ISNULL(data_entered,0)) + SUM(ISNULL(macro_enabled,0)) + SUM(ISNULL(qr_code_scanned,0)) AS Total_all
+	FROM DWH.fact_pst_recipient_result AS R
+	JOIN DWH.dim_template AS T ON T.template_key=R.template_key
+	WHERE ISNULL(clicks_count,0)>0 OR ISNULL(replies_count,0)>0 OR ISNULL(attachments_opened,0)>0 OR ISNULL(data_entered,0)>0 OR ISNULL(macro_enabled,0)>0 OR ISNULL(qr_code_scanned,0)>0
+	GROUP BY T.template_name
 GO
 
 CREATE OR ALTER VIEW [KPI].[vw_phishing_template_types]
@@ -557,4 +548,16 @@ AS
 			FROM types
 			GROUP BY template_type
 			HAVING SUM(total_all) > 0   -- extra safety; eigenlijk al gefilterd in src
+GO
+
+
+CREATE OR ALTER VIEW [KPI].[vw_phishing_error_type]
+AS
+	SELECT	SUM(Total_clicked) AS Total_clicked,
+			SUM(Total_replied) AS Total_replied,
+			SUM(total_attachments_opened) AS total_attachments_opened,
+			SUM(total_data_entered) AS total_data_entered,
+			SUM(total_macro_enabled) AS total_macro_enabled,
+			SUM(total_qr_code_scanned) AS total_qr_code_scanned
+		FROM [KPI].vw_phishing_templates
 GO

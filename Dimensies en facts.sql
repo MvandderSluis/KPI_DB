@@ -300,12 +300,15 @@ BEGIN
 				CASE WHEN r.replied_at             IS NOT NULL THEN 1 ELSE 0 END AS replies_count,
 				CASE WHEN r.attachment_opened_at   IS NOT NULL THEN 1 ELSE 0 END AS attachments_opened,
 				CASE WHEN r.data_entered_at        IS NOT NULL THEN 1 ELSE 0 END AS data_entered,
+				CASE WHEN r.macro_enabled_at	   IS NOT NULL THEN 1 ELSE 0 END AS macro_enabled,
+				CASE WHEN r.qr_code_scanned_at     IS NOT NULL THEN 1 ELSE 0 END AS qr_code_scanned,
 				CASE WHEN r.reported_at            IS NOT NULL THEN 1 ELSE 0 END AS reported_count,
 				r.load_ts  AS src_load_ts, p.campaign_id, p.started_at, p.duration_days, p.[name] AS template_name
 			FROM STG.Stg_kb4_Pst_Recipient r
 			JOIN STG.Stg_kb4_Pst p  ON p.pst_id = r.pst_id),
     src_mapped AS (
-        SELECT	du.user_key, dc.campaign_key, dt.template_key,s.pst_id, s.[user_id], s.delivered_count, s.opens_count, s.clicks_count, s.replies_count, s.attachments_opened, s.data_entered, s.reported_count, 
+        SELECT	du.user_key, dc.campaign_key, dt.template_key,s.pst_id, s.[user_id], s.delivered_count, s.opens_count, s.clicks_count, s.replies_count, s.attachments_opened, s.data_entered, 
+				s.macro_enabled, s.qr_code_scanned, s.reported_count, 
 				dd.date_key AS started_date_key, CASE WHEN s.duration_days IS NOT NULL THEN s.duration_days * 86400 ELSE NULL END AS duration_seconds, s.src_load_ts
 			FROM src s
 			JOIN DWH.dim_user du ON du.[user_id] = s.[user_id] AND du.is_current = 1
@@ -325,15 +328,17 @@ BEGIN
             tgt.replies_count      = src.replies_count,
             tgt.attachments_opened = src.attachments_opened,
             tgt.data_entered       = src.data_entered,
+			tgt.macro_enabled      = src.macro_enabled,
+			tgt.qr_code_scanned	   = src.qr_code_scanned,
             tgt.reported_count     = src.reported_count,
             tgt.started_date_key   = src.started_date_key,
             tgt.duration_seconds   = src.duration_seconds
             -- LET OP: load_ts níet updaten → eerste loaddatum blijft staan
     WHEN NOT MATCHED BY TARGET THEN
-        INSERT (user_key, campaign_key, template_key, pst_id, result_status, delivered_count, opens_count, clicks_count, replies_count, attachments_opened, data_entered, reported_count, started_date_key, 
+        INSERT (user_key, campaign_key, template_key, pst_id, result_status, delivered_count, opens_count, clicks_count, replies_count, attachments_opened, data_entered, macro_enabled, qr_code_scanned, reported_count, started_date_key, 
 				duration_seconds, load_ts)
 			VALUES (src.user_key, src.campaign_key, src.template_key, src.pst_id, NULL, src.delivered_count, src.opens_count, src.clicks_count, src.replies_count, src.attachments_opened, src.data_entered, 
-					src.reported_count, src.started_date_key, src.duration_seconds, src.src_load_ts);
+					src.macro_enabled, src.qr_code_scanned, src.reported_count, src.started_date_key, src.duration_seconds, src.src_load_ts);
 END;
 GO
 

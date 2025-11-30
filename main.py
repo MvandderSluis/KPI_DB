@@ -159,6 +159,7 @@ class MainWindow(qtw.QMainWindow):
         view_menu = menubar.addMenu('Views')
         sub_org = view_menu.addMenu('Op bedrijf')
         sub_unit = view_menu.addMenu('Op unit')
+        sub_phish = view_menu.addMenu('Op phishing')
 
         # Acties
         action_units = table_menu.addAction('Units')
@@ -167,8 +168,9 @@ class MainWindow(qtw.QMainWindow):
         action_training = table_menu.addAction("Training")
         action_etl_log = log_menu.addAction('ETL logging')
         action_etl_status = log_menu.addAction('ETL status')
-        action_vw_phish_templates = view_menu.addAction('Phishing templates')
-        action_vw_phish_types = view_menu.addAction('Phishing types')
+        action_vw_phish_templates = sub_phish.addAction('Phishing templates')
+        action_vw_phish_types = sub_phish.addAction('Phishing types')
+        action_vw_phish_errors = sub_phish.addAction('Phishing errors')
         action_vw_security_day = sub_org.addAction('Overall Dayly')
         action_vw_security_week = sub_org.addAction('Overall Weekly')
         action_vw_security_month = sub_org.addAction('Overall Monthly')
@@ -184,6 +186,7 @@ class MainWindow(qtw.QMainWindow):
         action_etl_status.triggered.connect(lambda: self._open_table('etl_status'))
         action_vw_phish_templates.triggered.connect(lambda: self._open_table('phish_templates'))
         action_vw_phish_types.triggered.connect(lambda: self._open_table('phish_types'))
+        action_vw_phish_errors.triggered.connect(lambda: self._open_table('phish_error'))
         action_vw_security_day.triggered.connect(lambda: self._open_table('sec_day'))
         action_vw_security_week.triggered.connect(lambda: self._open_table('sec_week'))
         action_vw_security_month.triggered.connect(lambda: self._open_table('sec_month'))
@@ -228,12 +231,18 @@ class MainWindow(qtw.QMainWindow):
         elif tab_name == 'phish_templates':
             editor = SqlTableEditor(connection=self.connection, table_name='KPI.vw_phishing_templates',
                                     columns=["Template_name", "Total_clicked", "Total_replied",
-                                             "Total_attachments_opened", "Total_data_entered", "Total_all"],
+                                             "Total_attachments_opened", "Total_data_entered", "Total_macro_enabled",
+                                             "Total_qr_code_scanned", "Total_all"],
                                     order_by=["Total_all DESC"], read_only=True)
         elif tab_name == 'phish_types':
             editor = SqlTableEditor(connection=self.connection, table_name='KPI.vw_phishing_template_types',
                                     columns=["Template_type", "Occurrences", "Total_reactions"],
                                     order_by=["Total_reactions DESC"], read_only=True)
+        elif tab_name == 'phish_error':
+            editor = SqlTableEditor(connection=self.connection, table_name='KPI.vw_phishing_error_type',
+                                    columns=["Total_clicked", "Total_replied", "total_attachments_opened",
+                                             "total_data_entered", "total_macro_enabled", "total_qr_code_scanned"],
+                                    order_by=["Total_clicked"], read_only=True)
         elif tab_name == 'sec_day':
             editor = SqlTableEditor(connection=self.connection, table_name='KPI.vw_security_dashboard_day',
                                     columns=["Year", "Month", "Day", "Avg_phish_prone",
