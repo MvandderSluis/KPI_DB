@@ -24,6 +24,8 @@ IF  EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[KPI].[vw_ph
 		DROP VIEW KPI.vw_phishing_template_types
 IF  EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[KPI].[vw_phishing_error_type]') AND type in (N'V'))
 		DROP VIEW KPI.vw_phishing_error_type
+IF  EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[KPI].[vw_phishing_top_10]') AND type in (N'V'))
+		DROP VIEW KPI.vw_phishing_top_10
 IF EXISTS (SELECT * FROM [KPI database].sys.schemas WHERE name = 'KPI')
 	DROP SCHEMA KPI
 GO
@@ -560,4 +562,25 @@ AS
 			SUM(total_macro_enabled) AS total_macro_enabled,
 			SUM(total_qr_code_scanned) AS total_qr_code_scanned
 		FROM [KPI].vw_phishing_templates
+GO
+
+CREATE OR ALTER VIEW [KPI].[vw_phishing_top_10]
+AS
+	SELECT TOP(10)
+		Template_name,
+		LTRIM(
+			STUFF(
+				CONCAT(
+					CASE WHEN total_clicked > 0 THEN ', clicked' ELSE '' END,
+					CASE WHEN total_replied > 0 THEN ', replied' ELSE '' END,
+					CASE WHEN total_attachments_opened > 0 THEN ', attachments_opened' ELSE '' END,
+					CASE WHEN total_data_entered > 0 THEN ', data_entered' ELSE '' END,
+					CASE WHEN total_macro_enabled > 0 THEN ', macro_enabled' ELSE '' END,
+					CASE WHEN total_qr_code_scanned > 0 THEN ', qr_code_scanned' ELSE '' END
+				),
+			1, 1, '')
+		) AS Error,
+		total_all AS Total
+	FROM KPI.vw_phishing_templates
+	ORDER BY Total_all DESC;
 GO

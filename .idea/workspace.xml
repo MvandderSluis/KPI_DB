@@ -4,10 +4,8 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="83988ac0-4b1e-42c4-b1c1-b258198167a7" name="Changes" comment="Logging on file build in">
+    <list default="true" id="83988ac0-4b1e-42c4-b1c1-b258198167a7" name="Changes" comment="fileds in fact_pst_recipient_result added and view added">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Dimensies en facts.sql" beforeDir="false" afterPath="$PROJECT_DIR$/Dimensies en facts.sql" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/KPI DWH.sql" beforeDir="false" afterPath="$PROJECT_DIR$/KPI DWH.sql" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Presentation Layer.sql" beforeDir="false" afterPath="$PROJECT_DIR$/Presentation Layer.sql" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/main.py" afterDir="false" />
     </list>
@@ -284,7 +282,15 @@
       <option name="project" value="LOCAL" />
       <updated>1764338628558</updated>
     </task>
-    <option name="localTasksCounter" value="15" />
+    <task id="LOCAL-00015" summary="fileds in fact_pst_recipient_result added and view added">
+      <option name="closed" value="true" />
+      <created>1764504928691</created>
+      <option name="number" value="00015" />
+      <option name="presentableId" value="LOCAL-00015" />
+      <option name="project" value="LOCAL" />
+      <updated>1764504928691</updated>
+    </task>
+    <option name="localTasksCounter" value="16" />
     <servers />
   </component>
   <component name="VcsManagerConfiguration">
@@ -300,7 +306,8 @@
     <MESSAGE value="Bugs removed" />
     <MESSAGE value="View templates updated" />
     <MESSAGE value="Logging on file build in" />
-    <option name="LAST_COMMIT_MESSAGE" value="Logging on file build in" />
+    <MESSAGE value="fileds in fact_pst_recipient_result added and view added" />
+    <option name="LAST_COMMIT_MESSAGE" value="fileds in fact_pst_recipient_result added and view added" />
   </component>
   <component name="XDebuggerManager">
     <watches-manager>

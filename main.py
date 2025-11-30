@@ -171,6 +171,7 @@ class MainWindow(qtw.QMainWindow):
         action_vw_phish_templates = sub_phish.addAction('Phishing templates')
         action_vw_phish_types = sub_phish.addAction('Phishing types')
         action_vw_phish_errors = sub_phish.addAction('Phishing errors')
+        action_vw_error_top10 = sub_phish.addAction('Error top 10')
         action_vw_security_day = sub_org.addAction('Overall Dayly')
         action_vw_security_week = sub_org.addAction('Overall Weekly')
         action_vw_security_month = sub_org.addAction('Overall Monthly')
@@ -187,6 +188,7 @@ class MainWindow(qtw.QMainWindow):
         action_vw_phish_templates.triggered.connect(lambda: self._open_table('phish_templates'))
         action_vw_phish_types.triggered.connect(lambda: self._open_table('phish_types'))
         action_vw_phish_errors.triggered.connect(lambda: self._open_table('phish_error'))
+        action_vw_error_top10.triggered.connect(lambda: self._open_table('top_10'))
         action_vw_security_day.triggered.connect(lambda: self._open_table('sec_day'))
         action_vw_security_week.triggered.connect(lambda: self._open_table('sec_week'))
         action_vw_security_month.triggered.connect(lambda: self._open_table('sec_month'))
@@ -243,6 +245,10 @@ class MainWindow(qtw.QMainWindow):
                                     columns=["Total_clicked", "Total_replied", "total_attachments_opened",
                                              "total_data_entered", "total_macro_enabled", "total_qr_code_scanned"],
                                     order_by=["Total_clicked"], read_only=True)
+        elif tab_name == 'top_10':
+            editor = SqlTableEditor(connection=self.connection, table_name='KPI.vw_phishing_top_10',
+                                    columns=["Template_name", "Error", "Total"], order_by=["Total DESC"],
+                                    read_only=True)
         elif tab_name == 'sec_day':
             editor = SqlTableEditor(connection=self.connection, table_name='KPI.vw_security_dashboard_day',
                                     columns=["Year", "Month", "Day", "Avg_phish_prone",
